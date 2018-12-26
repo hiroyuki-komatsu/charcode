@@ -63,13 +63,13 @@
   <body>
     <div id="main"></div>
     <script>
-function getHex(number) {
+function getHex(number, size=4) {
   let hex = number.toString(16).toUpperCase();
-  if (hex.length >= 4) {
+  if (hex.length >= size) {
     return hex;
   }
 
-  return ("0000" + hex).substr(hex.length, 4);
+  return ("0000" + hex).substr(hex.length, size);
 }
 
 class Chars {
@@ -102,6 +102,17 @@ class Chars {
     return this.getUtf16Escape();
   }
 
+  getCppCode() {
+    let utf8Escape = [];
+    for (let i = 0; i < this.chars.length; ++i) {
+      let utf8s = this.getUtf8sAt(i);
+      for (let j = 0; j < utf8s.length; ++j) {
+        utf8Escape.push(`\\x${getHex(utf8s[j], 2)}`);
+      }
+    }
+    return utf8Escape.join("");
+  }
+
   getUtf16Escape() {
     let utf16Escape = [];
     for (let i = 0; i < this.chars.length; ++i) {
@@ -119,6 +130,16 @@ class Chars {
 
   getCodePointAt(i) {
     return this.chars[i].codePointAt(0);
+  }
+
+  getUtf8sAt(i) {
+    let chars = this.chars[i];
+    let utf8encoded = encodeURIComponent(chars);
+    if (utf8encoded == chars) {
+      return [chars.charCodeAt(0)];
+    }
+    let utf8s = utf8encoded.slice(1).split("%").map(x => parseInt(x, 16));
+    return utf8s;
   }
 
   getUtf16sAt(i) {
@@ -169,15 +190,16 @@ class Viewer {
     this.base = document.createElement("div");
     this.base.innerHTML = (
       `<div>Text: <input type="text" class="text"></input></div>` +
-      `<div>HTML(Unicode): <span class="htmlcode"></span></div>` +
-      `<div>Java(UTF16): <span class="javacode"></span></div>` +
-//      `<div>C++(UTF8): <span class="utf16"></span></div>` +
+      `<div>HTML (Unicode): <span class="htmlcode"></span></div>` +
+      `<div>Java (UTF16): <span class="javacode"></span></div>` +
+      `<div>C++ (UTF8): <span class="cppcode"></span></div>` +
       `<div class="output"></div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.htmlCode = this.base.getElementsByClassName("htmlcode")[0];
     this.javaCode = this.base.getElementsByClassName("javacode")[0];
+    this.cppCode = this.base.getElementsByClassName("cppcode")[0];
     this.output = this.base.getElementsByClassName("output")[0];
 
     this.input.addEventListener("input", (event) => {
@@ -193,6 +215,7 @@ class Viewer {
     this.output.innerHTML = "";
     this.htmlCode.innerText = this.chars.getHtmlCode();
     this.javaCode.innerText = this.chars.getJavaCode();
+    this.cppCode.innerText = this.chars.getCppCode();
 
     for (let i = 0; i < this.chars.getLength(); ++i) {
       this.output.appendChild(this.createCharElement(i));
