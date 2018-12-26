@@ -89,6 +89,19 @@ class Chars {
     return this.chars.length;
   }
 
+  getHtmlCode() {
+    let htmlCode = [];
+    for (let i = 0; i < this.chars.length; ++i) {
+      const codepoint = this.getCodePointAt(i);
+      htmlCode.push(`&#x${getHex(codepoint)};`);
+    }
+    return htmlCode.join("");
+  }
+
+  getJavaCode() {
+    return this.getUtf16Escape();
+  }
+
   getUtf16Escape() {
     let utf16Escape = [];
     for (let i = 0; i < this.chars.length; ++i) {
@@ -156,12 +169,15 @@ class Viewer {
     this.base = document.createElement("div");
     this.base.innerHTML = (
       `<div>Text: <input type="text" class="text"></input></div>` +
-      `<div>Java(UTF16): <span class="utf16"></span></div>` +
+      `<div>HTML(Unicode): <span class="htmlcode"></span></div>` +
+      `<div>Java(UTF16): <span class="javacode"></span></div>` +
+//      `<div>C++(UTF8): <span class="utf16"></span></div>` +
       `<div class="output"></div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
-    this.utf16label = this.base.getElementsByClassName("utf16")[0];
+    this.htmlCode = this.base.getElementsByClassName("htmlcode")[0];
+    this.javaCode = this.base.getElementsByClassName("javacode")[0];
     this.output = this.base.getElementsByClassName("output")[0];
 
     this.input.addEventListener("input", (event) => {
@@ -175,7 +191,8 @@ class Viewer {
     let value = this.chars.getValue();
     this.input.value = value;
     this.output.innerHTML = "";
-    this.utf16label.innerText = this.chars.getUtf16Escape();
+    this.htmlCode.innerText = this.chars.getHtmlCode();
+    this.javaCode.innerText = this.chars.getJavaCode();
 
     for (let i = 0; i < this.chars.getLength(); ++i) {
       this.output.appendChild(this.createCharElement(i));
