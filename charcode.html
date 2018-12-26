@@ -1,0 +1,282 @@
+<html>
+  <head>
+    <style>
+.char {
+  display: inline-block;
+  border: 1px solid black;
+  width: 80px;
+  height: 130px;
+  vertical-align: top;
+  margin: 3px;
+  margin-top: 10px;
+  padding: 3px;
+  padding-top: 10px;
+  position: relative;
+}
+
+.char input {
+  font-size: 16px;
+  width: 100%;
+}
+
+.char .delete {
+  position: absolute;
+  right: -7px;
+  top: -7px;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid #AEAEAE;
+  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  background: #605F61;
+  font-size: 20px;
+  text-align: center;
+  line-height: 19px;
+  font-weight: bold;
+}
+
+.plus {
+  display: inline-block;
+  width: 10px;
+  height: 130px;
+  vertical-align: top;
+  margin: 0px;
+  padding: 0px;
+  padding-top: 60px;
+  padding-right: 3px;
+}
+
+.utf16 {
+  font-size: 10px;
+}
+
+.link {
+  font-size: 10px;
+}
+
+#input {
+  font-size: 20px;
+}
+    </style>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script>
+function getHex(number) {
+  let hex = number.toString(16).toUpperCase();
+  if (hex.length >= 4) {
+    return hex;
+  }
+
+  return ("0000" + hex).substr(hex.length, 4);
+}
+
+class Chars {
+  constructor(value) {
+    this.setValue(value);
+  }
+
+  setValue(value) {
+    this.chars = this.parse(value);
+  }
+
+  getValue() {
+    return this.chars.join("");
+  }
+
+  getLength() {
+    return this.chars.length;
+  }
+
+  getUtf16Escape() {
+    let utf16Escape = [];
+    for (let i = 0; i < this.chars.length; ++i) {
+      let utf16s = this.getUtf16sAt(i);
+      for (let j = 0; j < utf16s.length; ++j) {
+        utf16Escape.push(`\\u${getHex(utf16s[j])}`);
+      }
+    }
+    return utf16Escape.join("");
+  }
+
+  getCharAt(i) {
+    return this.chars[i];
+  }
+
+  getCodePointAt(i) {
+    return this.chars[i].codePointAt(0);
+  }
+
+  getUtf16sAt(i) {
+    let chars = this.chars[i];
+    let utf16s = [];
+    for (let c = 0; c < chars.length; ++c) {
+      utf16s.push(chars.charCodeAt(c));
+    }
+    return utf16s;
+  }
+
+  parse(value) {
+    let chars = [];
+    for (let i = 0; i < value.length; ++i) {
+      const codePoint = value.codePointAt(i);
+      const charCode = value.charCodeAt(i);
+      if (codePoint !== charCode) {
+        i++;
+      }
+      chars.push(String.fromCodePoint(codePoint));
+    }
+    return chars;
+  }
+
+  replace(index, char) {
+    this.chars.splice(index, 1, char);
+  }
+
+  insert(index, char) {
+    this.chars.splice(index, 0, char);
+  }
+
+  delete(index) {
+    this.chars.splice(index, 1);
+  }
+
+  move(src, dst) {
+    const char = this.chars.splice(src, 1)[0];
+//    if (src > dst) {
+//      dst += 1;
+//    }
+    this.insert(dst, char);
+  }
+}
+
+class Viewer {
+  constructor(value) {
+    this.codePoints = [];
+    this.chars = new Chars(value);
+
+    this.base = document.createElement("div");
+    this.base.innerHTML = (
+      `<div>Text: <input type="text" class="text"></input></div>` +
+      `<div>UTF16: <span class="utf16"></span></div>` +
+      `<div class="output"></div>` +
+      `<hr />`);
+
+    this.input = this.base.getElementsByClassName("text")[0];
+    this.utf16label = this.base.getElementsByClassName("utf16")[0];
+    this.output = this.base.getElementsByClassName("output")[0];
+
+    this.input.addEventListener("input", (event) => {
+      this.chars.setValue(this.input.value);
+      this.draw();
+    });
+    this.draw();
+  }
+
+  draw() {
+    let value = this.chars.getValue();
+    this.input.value = value;
+    this.output.innerHTML = "";
+    this.utf16label.innerText = this.chars.getUtf16Escape();
+
+    for (let i = 0; i < this.chars.getLength(); ++i) {
+      this.output.appendChild(this.createPlusElement(i));
+      this.output.appendChild(this.createCharElement(i));
+    }
+    this.output.appendChild(this.createPlusElement(value.length));
+  }
+
+  onDrag(event, index) {
+    event.dataTransfer.setData("text/plain", index);
+  }
+
+  onDrop(event, index) {
+    let src = parseInt(event.dataTransfer.getData("text/plain"));
+    console.log(`onDrop: src=${src}, index=${index}`);
+    this.chars.move(src, index);
+    console.log(`${this.chars}`);
+    this.draw();
+  }
+
+  createCharElement(index) {
+    let charElement = document.createElement("div");
+    charElement.className = "char";
+    charElement.draggable = true;
+    const codePoint = this.chars.getCodePointAt(index);
+    const utf16s = this.chars.getUtf16sAt(index);
+    const codePointHex = getHex(codePoint);
+    const utf16String = utf16s.map((code) => { return getHex(code); }).join(" ");
+
+    const codePointChar = this.chars.getCharAt(index);
+    const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
+    charElement.innerHTML = (
+      `<div class="delete">✖</div>` +
+      `<div><input class="codePointHex" type="text" value="${codePointHex}" /></div>` +
+      `<div><input class="codePointChar" type="text" value="${codePointChar}" /></div>` +
+      `<div class="utf16">${utf16String}</div>` +
+      `<div class="link"><a href="${url}">properties</a></div>`);
+    let codePointHexElement = charElement.getElementsByClassName("codePointHex")[0];
+    codePointHexElement.addEventListener("change", () => {
+      this.chars.replace(index, String.fromCodePoint(parseInt(codePointHexElement.value, 16)));
+      this.draw();
+    });
+
+    let codePointCharElement = charElement.getElementsByClassName("codePointChar")[0];
+    codePointCharElement.addEventListener("change", () => {
+      this.chars.replace(index, codePointCharElement.value);
+      this.draw();
+    });
+
+    let deleteElement = charElement.getElementsByClassName("delete")[0];
+    deleteElement.addEventListener("click", () => {
+      this.chars.delete(index);
+      this.draw();
+    })
+
+    // Drag and Drop
+    charElement.addEventListener("dragstart", () => {
+      this.onDrag(event, index);
+    });
+
+    charElement.addEventListener("dragover", () => {
+      event.preventDefault();
+    });
+
+    charElement.addEventListener("drop", () => {
+      event.preventDefault();
+      this.onDrop(event, index);
+    });
+
+    return charElement;
+  }
+
+  createPlusElement(index) {
+    let plus = document.createElement("div");
+    plus.className = "plus";
+    plus.innerText = "⊕";
+    plus.addEventListener("click", () => {
+      this.chars.insert(index, " ");
+      this.draw();
+    });
+    return plus;
+  }
+}
+
+function addViewer(viewer) {
+  document.getElementById("main").appendChild(viewer.base);
+}
+
+let viewer = new Viewer("(๑•̀ㅂ•́)و✧");
+addViewer(viewer);
+
+let addButton = document.createElement("input");
+addButton.type = "button";
+addButton.value = "Add";
+addButton.addEventListener("click", (event) => {
+  addViewer(new Viewer("(๑•̀ㅂ•́)و✧"));
+});
+document.body.appendChild(addButton);
+    </script>
+  </body>
+</html>
