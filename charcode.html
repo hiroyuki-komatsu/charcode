@@ -55,8 +55,8 @@
   font-size: 10px;
 }
 
-#input {
-  font-size: 20px;
+.text {
+  font-size: 30px;
 }
     </style>
   </head>
@@ -156,7 +156,7 @@ class Viewer {
     this.base = document.createElement("div");
     this.base.innerHTML = (
       `<div>Text: <input type="text" class="text"></input></div>` +
-      `<div>UTF16: <span class="utf16"></span></div>` +
+      `<div>Java(UTF16): <span class="utf16"></span></div>` +
       `<div class="output"></div>` +
       `<hr />`);
 
@@ -225,13 +225,23 @@ class Viewer {
     });
 
     let deleteElement = charElement.getElementsByClassName("delete")[0];
+    deleteElement.style.display = "none";
     deleteElement.addEventListener("click", () => {
       this.chars.delete(index);
       this.draw();
     })
 
+    // Delete button on mouse over
+    charElement.addEventListener("mouseover", () => {
+      deleteElement.style.display = "";
+    });
+    charElement.addEventListener("mouseleave", () => {
+      deleteElement.style.display = "none";
+    });
+
     // Drag and Drop
     charElement.addEventListener("dragstart", () => {
+      deleteElement.style.display = "none";
       this.onDrag(event, index);
     });
 
