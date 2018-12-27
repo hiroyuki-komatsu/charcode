@@ -47,6 +47,10 @@
   padding-top: 50px;
 }
 
+.utf8 {
+  font-size: 10px;
+}
+
 .utf16 {
   font-size: 10px;
 }
@@ -250,7 +254,7 @@ class EncodeElement {
 }
 
 class Viewer {
-  constructor(value, encode=Encoding.getDefaultEncoding()) {
+  constructor(value, encoding) {
     this.codePoints = [];
     this.chars = new Chars(value);
 
@@ -263,7 +267,7 @@ class Viewer {
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
-    this.encode = new EncodeElement(encode, (event) => {this.draw();});
+    this.encode = new EncodeElement(encoding, (event) => {this.draw();});
     this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
     this.input.addEventListener("input", (event) => {
@@ -303,8 +307,10 @@ class Viewer {
     charElement.className = "char";
     charElement.draggable = true;
     const codePoint = this.chars.getCodePointAt(index);
+    const utf8s = this.chars.getUtf8sAt(index);
     const utf16s = this.chars.getUtf16sAt(index);
     const codePointHex = getHex(codePoint);
+    const utf8String = utf8s.map((code) => { return getHex(code, 2); }).join(" ");
     const utf16String = utf16s.map((code) => { return getHex(code); }).join(" ");
 
     const codePointChar = this.chars.getCharAt(index);
@@ -313,6 +319,7 @@ class Viewer {
       `<div class="delete">✖</div>` +
       `<div><input class="codePointHex" type="text" value="${codePointHex}" /></div>` +
       `<div><input class="codePointChar" type="text" value="${codePointChar}" /></div>` +
+      `<div class="utf8">${utf8String}</div>` +
       `<div class="utf16">${utf16String}</div>` +
       `<div class="link"><a href="${url}">properties</a></div>`);
     let codePointHexElement = charElement.getElementsByClassName("codePointHex")[0];
@@ -383,16 +390,16 @@ function setUrl(text, encode) {
 
 const params = new URLSearchParams(window.location.search);
 const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
-const encode = params.get("encode") || Encoding.getDefaultEncoding();
+const encoding = params.get("encode") || Encoding.getDefaultEncoding();
 
-let viewer = new Viewer(text, encode);
+let viewer = new Viewer(text, encoding);
 addViewer(viewer);
 
 let addButton = document.createElement("input");
 addButton.type = "button";
 addButton.value = "Add";
 addButton.addEventListener("click", (event) => {
-  addViewer(new Viewer("(๑•̀ㅂ•́)و✧"));
+  addViewer(new Viewer("(๑•̀ㅂ•́)و✧", encoding));
 });
 document.body.appendChild(addButton);
     </script>
