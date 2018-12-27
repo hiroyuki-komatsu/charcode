@@ -183,25 +183,60 @@ class Chars {
   }
 }
 
+class EncodeElement {
+  constructor(chars, encode) {
+    this.chars = chars;
+    this.element = document.createElement("div");
+    this.element.innerHTML = (
+      `<select class="encode">` +
+      `<option value="html">UTF32 &#xNNNN;</option>` +
+      `<option value="utf16">UTF16 \\uNNNN</option>` +
+      `<option value="cpp">UTF8  \\xNN</option>` +
+      `</select>` +
+      `<span class="encoded"></span>`
+    );
+    this.selectElement = this.element.getElementsByClassName("encode")[0];
+    this.selectElement.value = encode;
+    this.selectElement.addEventListener("change", (event) => {
+      this.draw();
+    });
+  }
+
+  draw() {
+    let encodedElement = this.element.getElementsByClassName("encoded")[0];
+
+    switch(this.selectElement.value) {
+      case "html":
+        encodedElement.innerText = this.chars.getHtmlCode();
+        break;
+      case "utf16":
+        encodedElement.innerText = this.chars.getJavaCode();
+        break;
+      case "cpp":
+        encodedElement.innerText = this.chars.getCppCode();
+        break;
+      default:
+        encodedElement.innerText = "";
+    }
+  }
+}
+
 class Viewer {
-  constructor(value) {
+  constructor(value, encode="html") {
     this.codePoints = [];
     this.chars = new Chars(value);
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
-      `<div>Text: <input type="text" class="text"></input></div>` +
+      `<input type="text" class="text"></input>` +
       `<div class="output"></div>` +
-      `<div>HTML (Unicode): <span class="htmlcode"></span></div>` +
-      `<div>Java (UTF16): <span class="javacode"></span></div>` +
-      `<div>C++ (UTF8): <span class="cppcode"></span></div>` +
+      `<div class="encode"></div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
-    this.htmlCode = this.base.getElementsByClassName("htmlcode")[0];
-    this.javaCode = this.base.getElementsByClassName("javacode")[0];
-    this.cppCode = this.base.getElementsByClassName("cppcode")[0];
     this.output = this.base.getElementsByClassName("output")[0];
+    this.encode = new EncodeElement(this.chars, encode);
+    this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
     this.input.addEventListener("input", (event) => {
       this.chars.setValue(this.input.value);
@@ -214,14 +249,12 @@ class Viewer {
     let value = this.chars.getValue();
     this.input.value = value;
     this.output.innerHTML = "";
-    this.htmlCode.innerText = this.chars.getHtmlCode();
-    this.javaCode.innerText = this.chars.getJavaCode();
-    this.cppCode.innerText = this.chars.getCppCode();
 
     for (let i = 0; i < this.chars.getLength(); ++i) {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
+    this.encode.draw();
   }
 
   onDrag(event, index) {
@@ -314,7 +347,11 @@ function addViewer(viewer) {
   document.getElementById("main").appendChild(viewer.base);
 }
 
-let viewer = new Viewer("(๑•̀ㅂ•́)و✧");
+const params = new URLSearchParams(window.location.search);
+const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
+const encode = params.get("encode") || "html";
+
+let viewer = new Viewer(text, encode);
 addViewer(viewer);
 
 let addButton = document.createElement("input");
