@@ -77,12 +77,15 @@ function getHex(number, size=4) {
 }
 
 class Chars {
-  constructor(value) {
-    this.setValue(value);
+  constructor(id, value, onUpdate) {
+    this.id = id;
+    this.chars = Chars.parse(value);
+    this.onUpdate = onUpdate;
   }
 
   setValue(value) {
-    this.chars = this.parse(value);
+    this.chars = Chars.parse(value);
+    this.onUpdate();
   }
 
   getValue() {
@@ -101,36 +104,24 @@ class Chars {
     return this.chars[i].codePointAt(0);
   }
 
-  parse(value) {
-    let chars = [];
-    for (let i = 0; i < value.length; ++i) {
-      const codePoint = value.codePointAt(i);
-      const charCode = value.charCodeAt(i);
-      // If codePoint is more than 0xFFFF, charCode is a part of surrogate pair.
-      if (codePoint !== charCode) {
-        i++;
-      }
-      chars.push(String.fromCodePoint(codePoint));
-    }
-    return chars;
+  static parse(value) {
+    return Encoder.getUtf32Array(value).map(x => String.fromCodePoint(x));
   }
 
   replace(index, char) {
     this.chars.splice(index, 1, char);
     this.setValue(this.getValue());
+    this.onUpdate();
   }
 
   insert(index, char) {
     this.chars.splice(index, 0, char);
+    this.onUpdate();
   }
 
   delete(index) {
     this.chars.splice(index, 1);
-  }
-
-  move(src, dst) {
-    const char = this.chars.splice(src, 1)[0];
-    this.insert(dst, char);
+    this.onUpdate();
   }
 }
 
@@ -262,10 +253,41 @@ class EncodeElement {
   }
 }
 
+class SessionManager {
+  constructor() {
+    this.nextId = 0;
+    this.data = {};
+  }
+
+  newChars(value, onUpdate) {
+    let chars = new Chars(this.nextId, value, onUpdate);
+    this.data[this.nextId] = chars;
+    this.nextId++;
+    return chars;
+  }
+
+  getDndProtocol(chars, index) {
+    return [chars.id, index].join("\t");
+  }
+
+  moveChar(srcProtocol, dstProtocol) {
+    const src = srcProtocol.split("\t");
+    const srcId = parseInt(src[0]);
+    const srcIndex = parseInt(src[1]);
+    const dst = dstProtocol.split("\t");
+    const dstId = parseInt(dst[0]);
+    const dstIndex = parseInt(dst[1]);
+
+    const char = this.data[srcId].getCharAt(srcIndex);
+    this.data[srcId].delete(srcIndex);
+    this.data[dstId].insert(dstIndex, char);
+  }
+}
+
 class Viewer {
-  constructor(value, encoding) {
-    this.codePoints = [];
-    this.chars = new Chars(value);
+  constructor(sessionManager, value, encoding) {
+    this.sessionManager = sessionManager;
+    this.chars = sessionManager.newChars(value, () => {this.draw()});
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
@@ -281,13 +303,12 @@ class Viewer {
 
     this.input.addEventListener("input", (event) => {
       this.chars.setValue(this.input.value);
-      this.draw();
     });
     this.draw();
   }
 
   draw() {
-    let value = this.chars.getValue();
+    const value = this.chars.getValue();
     this.input.value = value;
     this.output.innerHTML = "";
 
@@ -300,15 +321,14 @@ class Viewer {
   }
 
   onDrag(event, index) {
-    event.dataTransfer.setData("text/plain", index);
+    const protocol = this.sessionManager.getDndProtocol(this.chars, index);
+    event.dataTransfer.setData("text/plain", protocol);
   }
 
   onDrop(event, index) {
-    let src = parseInt(event.dataTransfer.getData("text/plain"));
-    console.log(`onDrop: src=${src}, index=${index}`);
-    this.chars.move(src, index);
-    console.log(`${this.chars}`);
-    this.draw();
+    const srcProtocol = event.dataTransfer.getData("text/plain");
+    const dstProtocol = this.sessionManager.getDndProtocol(this.chars, index);
+    this.sessionManager.moveChar(srcProtocol, dstProtocol);
   }
 
   createCharElement(index) {
@@ -332,20 +352,17 @@ class Viewer {
     let codePointHexElement = charElement.getElementsByClassName("codePointHex")[0];
     codePointHexElement.addEventListener("change", () => {
       this.chars.replace(index, String.fromCodePoint(parseInt(codePointHexElement.value, 16)));
-      this.draw();
     });
 
     let codePointCharElement = charElement.getElementsByClassName("codePointChar")[0];
     codePointCharElement.addEventListener("change", () => {
       this.chars.replace(index, codePointCharElement.value);
-      this.draw();
     });
 
     let deleteElement = charElement.getElementsByClassName("delete")[0];
     deleteElement.style.display = "none";
     deleteElement.addEventListener("click", () => {
       this.chars.delete(index);
-      this.draw();
     })
 
     // Delete button on mouse over
@@ -380,7 +397,6 @@ class Viewer {
     plus.innerText = "⊕";
     plus.addEventListener("click", () => {
       this.chars.insert(index, " ");
-      this.draw();
     });
     return plus;
   }
@@ -399,14 +415,16 @@ const params = new URLSearchParams(window.location.search);
 const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
 const encoding = params.get("encode") || Encoder.getDefaultEncoding();
 
-let viewer = new Viewer(text, encoding);
+let sessionManager = new SessionManager();
+
+let viewer = new Viewer(sessionManager, text, encoding);
 addViewer(viewer);
 
 let addButton = document.createElement("input");
 addButton.type = "button";
 addButton.value = "Add";
 addButton.addEventListener("click", (event) => {
-  addViewer(new Viewer("(๑•̀ㅂ•́)و✧", encoding));
+  addViewer(new Viewer(sessionManager, "(๑•̀ㅂ•́)و✧", encoding));
 });
 document.body.appendChild(addButton);
     </script>
