@@ -166,6 +166,7 @@ class Chars {
 
   replace(index, char) {
     this.chars.splice(index, 1, char);
+    this.setValue(this.getValue());
   }
 
   insert(index, char) {
@@ -190,10 +191,10 @@ class Viewer {
     this.base = document.createElement("div");
     this.base.innerHTML = (
       `<div>Text: <input type="text" class="text"></input></div>` +
+      `<div class="output"></div>` +
       `<div>HTML (Unicode): <span class="htmlcode"></span></div>` +
       `<div>Java (UTF16): <span class="javacode"></span></div>` +
       `<div>C++ (UTF8): <span class="cppcode"></span></div>` +
-      `<div class="output"></div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
