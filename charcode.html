@@ -184,8 +184,7 @@ class Chars {
 }
 
 class EncodeElement {
-  constructor(chars, encode) {
-    this.chars = chars;
+  constructor(encode, callback) {
     this.element = document.createElement("div");
     this.element.innerHTML = (
       `<select class="encode">` +
@@ -198,26 +197,32 @@ class EncodeElement {
     this.selectElement = this.element.getElementsByClassName("encode")[0];
     this.selectElement.value = encode;
     this.selectElement.addEventListener("change", (event) => {
-      this.draw();
+      callback(event);
     });
   }
 
-  draw() {
-    let encodedElement = this.element.getElementsByClassName("encoded")[0];
+  getEncode() {
+    return this.selectElement.value;
+  }
 
-    switch(this.selectElement.value) {
+  draw(chars) {
+    let encodedElement = this.element.getElementsByClassName("encoded")[0];
+    let value = "";
+
+    switch(this.getEncode()) {
       case "html":
-        encodedElement.innerText = this.chars.getHtmlCode();
+        value = chars.getHtmlCode();
         break;
       case "utf16":
-        encodedElement.innerText = this.chars.getJavaCode();
+        value = chars.getJavaCode();
         break;
       case "cpp":
-        encodedElement.innerText = this.chars.getCppCode();
+        value = chars.getCppCode();
         break;
       default:
-        encodedElement.innerText = "";
+        value = "";
     }
+    encodedElement.innerText = value;
   }
 }
 
@@ -235,7 +240,7 @@ class Viewer {
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
-    this.encode = new EncodeElement(this.chars, encode);
+    this.encode = new EncodeElement(encode, (event) => {this.draw();});
     this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
     this.input.addEventListener("input", (event) => {
@@ -254,7 +259,8 @@ class Viewer {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw();
+    this.encode.draw(this.chars);
+    setUrl(value, this.encode.getEncode());
   }
 
   onDrag(event, index) {
@@ -345,6 +351,11 @@ class Viewer {
 
 function addViewer(viewer) {
   document.getElementById("main").appendChild(viewer.base);
+}
+
+function setUrl(text, encode) {
+  const params = `text=${encodeURIComponent(text)}&encode=${encodeURIComponent(encode)}`;
+  history.replaceState("", "", location.pathname + "?" + params);
 }
 
 const params = new URLSearchParams(window.location.search);
