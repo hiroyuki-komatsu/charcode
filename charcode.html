@@ -153,33 +153,38 @@ class Encoder {
     return dict[encoding] || fallback;
   }
 
-  static encode(chars, encoding) {
-    let value = "";
+  static encode(value, encoding) {
+    let encoded = "";
     switch(encoding) {
       case "utf32-amp":
-        value = this.encodeUtf32(chars, "&#x", ";");
+        encoded = this.encodeUtf32(value, "&#x", ";");
         break;
       case "utf16-u":
-        value = this.encodeUtf16(chars, "\\u", "");
+        encoded = this.encodeUtf16(value, "\\u", "");
         break;
       case "utf8-x":
-        value = this.encodeUtf8(chars, "\\x", "");
+        encoded = this.encodeUtf8(value, "\\x", "");
         break;
       case "utf8-pct":
-        value = this.encodeUtf8(chars, "%", "");
+        encoded = this.encodeUtf8(value, "%", "");
         break;
       default:
-        value = "invalid encoding";
+        encoded = "invalid encoding";
     }
-    return value;
+    return encoded;
   }
 
   static getUtf8Array(str) {
+    let utf8s = [];
     const utf8encoded = encodeURIComponent(str);
-    if (utf8encoded == str) {
-      return [str.charCodeAt(0)];
+    for (let i = 0; i < utf8encoded.length; ++i) {
+      if (utf8encoded[i] != "%") {
+        utf8s.push(utf8encoded[i].charCodeAt(0));
+      } else {
+        utf8s.push(parseInt(utf8encoded.slice(i + 1, i + 3), 16));
+        i += 2;
+      }
     }
-    const utf8s = utf8encoded.slice(1).split("%").map(x => parseInt(x, 16));
     return utf8s;
   }
 
@@ -205,37 +210,26 @@ class Encoder {
     return utf32s;
   }
 
-  static encodeUtf8(chars, prefix="", suffix="") {
-    let utf8Escape = [];
-    for (let i = 0; i < chars.getLength(); ++i) {
-      const utf8s = this.getUtf8Array(chars.getCharAt(i));
-      for (let j = 0; j < utf8s.length; ++j) {
-        utf8Escape.push(prefix + getHex(utf8s[j], 2) + suffix);
-      }
+  static encodeUtf(str, getUtfArrayFunc, size, prefix="", suffix="", delimiter="") {
+    let utfEscape = [];
+    const utfs = getUtfArrayFunc(str);
+    for (let j = 0; j < utfs.length; ++j) {
+      utfEscape.push(prefix + getHex(utfs[j], size) + suffix);
     }
-    return utf8Escape.join("");
+    return utfEscape.join(delimiter);
+
   }
 
-  static encodeUtf16(chars, prefix="", suffix="") {
-    let utf16Escape = [];
-    for (let i = 0; i < chars.getLength(); ++i) {
-      const utf16s = this.getUtf16Array(chars.getCharAt(i));
-      for (let j = 0; j < utf16s.length; ++j) {
-        utf16Escape.push(prefix + getHex(utf16s[j]) + suffix);
-      }
-    }
-    return utf16Escape.join("");
+  static encodeUtf8(str, prefix="", suffix="", delimiter="") {
+    return this.encodeUtf(str, this.getUtf8Array, 2, prefix, suffix, delimiter);
   }
 
-  static encodeUtf32(chars, prefix="", suffix="") {
-    let utf32Escape = [];
-    for (let i = 0; i < chars.getLength(); ++i) {
-      const utf32s = this.getUtf32Array(chars.getCharAt(i));
-      for (let j = 0; j < utf32s.length; ++j) {
-        utf32Escape.push(prefix + getHex(utf32s[j]) + suffix);
-      }
-    }
-    return utf32Escape.join("");
+  static encodeUtf16(str, prefix="", suffix="", delimiter="") {
+    return this.encodeUtf(str, this.getUtf16Array, 4, prefix, suffix, delimiter);
+  }
+
+  static encodeUtf32(str, prefix="", suffix="", delimiter="") {
+    return this.encodeUtf(str, this.getUtf32Array, 4, prefix, suffix, delimiter);
   }
 }
 
@@ -301,7 +295,7 @@ class Viewer {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw(Encoder.encode(this.chars, this.encode.getEncode()));
+    this.encode.draw(Encoder.encode(value, this.encode.getEncode()));
     setUrl(value, this.encode.getEncode());
   }
 
@@ -322,11 +316,9 @@ class Viewer {
     charElement.className = "char";
     charElement.draggable = true;
     const codePoint = this.chars.getCodePointAt(index);
-    const utf8s = Encoder.getUtf8Array(this.chars.getCharAt(index));
-    const utf16s = Encoder.getUtf16Array(this.chars.getCharAt(index));
+    const utf8String = Encoder.encodeUtf8(this.chars.getCharAt(index), "", "", " ");
+    const utf16String = Encoder.encodeUtf16(this.chars.getCharAt(index), "", "", " ");
     const codePointHex = getHex(codePoint);
-    const utf8String = utf8s.map((code) => { return getHex(code, 2); }).join(" ");
-    const utf16String = utf16s.map((code) => { return getHex(code); }).join(" ");
 
     const codePointChar = this.chars.getCharAt(index);
     const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
