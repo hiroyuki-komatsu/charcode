@@ -136,7 +136,7 @@ class Chars {
 
 class Encoder {
   static getEncodings() {
-    return ["utf32-amp", "utf16-u", "utf8-x", "utf8-pct"];
+    return ["utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
   }
 
   static getDefaultEncoding() {
@@ -146,6 +146,7 @@ class Encoder {
   static getLabel(encoding, fallback="") {
     const dict = {
       "utf32-amp": "UTF32 &#xNNNN;",
+      "utf32-u": "UTF32 \\u{NNNN}",
       "utf16-u": "UTF16 \\uNNNN",
       "utf8-x": "UTF8 \\xNN",
       "utf8-pct": "UTF8 %NN",
@@ -158,6 +159,9 @@ class Encoder {
     switch(encoding) {
       case "utf32-amp":
         encoded = this.encodeUtf32(value, "&#x", ";");
+        break;
+        case "utf32-u":
+        encoded = this.encodeUtf32(value, "\\u{", "}");
         break;
       case "utf16-u":
         encoded = this.encodeUtf16(value, "\\u", "");
@@ -211,13 +215,9 @@ class Encoder {
   }
 
   static encodeUtf(str, getUtfArrayFunc, size, prefix="", suffix="", delimiter="") {
-    let utfEscape = [];
     const utfs = getUtfArrayFunc(str);
-    for (let j = 0; j < utfs.length; ++j) {
-      utfEscape.push(prefix + getHex(utfs[j], size) + suffix);
-    }
-    return utfEscape.join(delimiter);
-
+    const encoded = utfs.map(x => { return prefix + getHex(x, size) + suffix; });
+    return encoded.join(delimiter);
   }
 
   static encodeUtf8(str, prefix="", suffix="", delimiter="") {
