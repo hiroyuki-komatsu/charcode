@@ -3,11 +3,11 @@
     <style>
 .char {
   display: inline-block;
-  border: 1px solid black;
+  border: 1px solid lightgrey;
   width: 80px;
   height: 130px;
   vertical-align: top;
-  margin: 3px;
+  margin: 2px;
   margin-top: 10px;
   padding: 3px;
   padding-top: 10px;
@@ -93,41 +93,6 @@ class Chars {
     return this.chars.length;
   }
 
-  getHtmlCode() {
-    let htmlCode = [];
-    for (let i = 0; i < this.chars.length; ++i) {
-      const codepoint = this.getCodePointAt(i);
-      htmlCode.push(`&#x${getHex(codepoint)};`);
-    }
-    return htmlCode.join("");
-  }
-
-  getJavaCode() {
-    return this.getUtf16Escape();
-  }
-
-  getCppCode() {
-    let utf8Escape = [];
-    for (let i = 0; i < this.chars.length; ++i) {
-      let utf8s = this.getUtf8sAt(i);
-      for (let j = 0; j < utf8s.length; ++j) {
-        utf8Escape.push(`\\x${getHex(utf8s[j], 2)}`);
-      }
-    }
-    return utf8Escape.join("");
-  }
-
-  getUtf16Escape() {
-    let utf16Escape = [];
-    for (let i = 0; i < this.chars.length; ++i) {
-      let utf16s = this.getUtf16sAt(i);
-      for (let j = 0; j < utf16s.length; ++j) {
-        utf16Escape.push(`\\u${getHex(utf16s[j])}`);
-      }
-    }
-    return utf16Escape.join("");
-  }
-
   getCharAt(i) {
     return this.chars[i];
   }
@@ -136,30 +101,12 @@ class Chars {
     return this.chars[i].codePointAt(0);
   }
 
-  getUtf8sAt(i) {
-    let chars = this.chars[i];
-    let utf8encoded = encodeURIComponent(chars);
-    if (utf8encoded == chars) {
-      return [chars.charCodeAt(0)];
-    }
-    let utf8s = utf8encoded.slice(1).split("%").map(x => parseInt(x, 16));
-    return utf8s;
-  }
-
-  getUtf16sAt(i) {
-    let chars = this.chars[i];
-    let utf16s = [];
-    for (let c = 0; c < chars.length; ++c) {
-      utf16s.push(chars.charCodeAt(c));
-    }
-    return utf16s;
-  }
-
   parse(value) {
     let chars = [];
     for (let i = 0; i < value.length; ++i) {
       const codePoint = value.codePointAt(i);
       const charCode = value.charCodeAt(i);
+      // If codePoint is more than 0xFFFF, charCode is a part of surrogate pair.
       if (codePoint !== charCode) {
         i++;
       }
@@ -189,7 +136,7 @@ class Chars {
 
 class Encoder {
   static getEncodings() {
-    return ["utf32-amp", "utf16-u", "utf8-x"];
+    return ["utf32-amp", "utf16-u", "utf8-x", "utf8-pct"];
   }
 
   static getDefaultEncoding() {
@@ -201,6 +148,7 @@ class Encoder {
       "utf32-amp": "UTF32 &#xNNNN;",
       "utf16-u": "UTF16 \\uNNNN",
       "utf8-x": "UTF8 \\xNN",
+      "utf8-pct": "UTF8 %NN",
     };
     return dict[encoding] || fallback;
   }
@@ -209,18 +157,85 @@ class Encoder {
     let value = "";
     switch(encoding) {
       case "utf32-amp":
-        value = chars.getHtmlCode();
+        value = this.encodeUtf32(chars, "&#x", ";");
         break;
       case "utf16-u":
-        value = chars.getJavaCode();
+        value = this.encodeUtf16(chars, "\\u", "");
         break;
       case "utf8-x":
-        value = chars.getCppCode();
+        value = this.encodeUtf8(chars, "\\x", "");
+        break;
+      case "utf8-pct":
+        value = this.encodeUtf8(chars, "%", "");
         break;
       default:
         value = "invalid encoding";
     }
     return value;
+  }
+
+  static getUtf8Array(str) {
+    const utf8encoded = encodeURIComponent(str);
+    if (utf8encoded == str) {
+      return [str.charCodeAt(0)];
+    }
+    const utf8s = utf8encoded.slice(1).split("%").map(x => parseInt(x, 16));
+    return utf8s;
+  }
+
+  static getUtf16Array(str) {
+    let utf16s = [];
+    for (let i = 0; i < str.length; ++i) {
+      utf16s.push(str.charCodeAt(i));
+    }
+    return utf16s;
+  }
+
+  static getUtf32Array(str) {
+    let utf32s = [];
+    for (let i = 0; i < str.length; ++i) {
+      const codePoint = str.codePointAt(i);
+      const charCode = str.charCodeAt(i);
+      // If codePoint is more than 0xFFFF, charCode is a part of surrogate pair.
+      if (codePoint !== charCode) {
+        i++;
+      }
+      utf32s.push(codePoint);
+    }
+    return utf32s;
+  }
+
+  static encodeUtf8(chars, prefix="", suffix="") {
+    let utf8Escape = [];
+    for (let i = 0; i < chars.getLength(); ++i) {
+      const utf8s = this.getUtf8Array(chars.getCharAt(i));
+      for (let j = 0; j < utf8s.length; ++j) {
+        utf8Escape.push(prefix + getHex(utf8s[j], 2) + suffix);
+      }
+    }
+    return utf8Escape.join("");
+  }
+
+  static encodeUtf16(chars, prefix="", suffix="") {
+    let utf16Escape = [];
+    for (let i = 0; i < chars.getLength(); ++i) {
+      const utf16s = this.getUtf16Array(chars.getCharAt(i));
+      for (let j = 0; j < utf16s.length; ++j) {
+        utf16Escape.push(prefix + getHex(utf16s[j]) + suffix);
+      }
+    }
+    return utf16Escape.join("");
+  }
+
+  static encodeUtf32(chars, prefix="", suffix="") {
+    let utf32Escape = [];
+    for (let i = 0; i < chars.getLength(); ++i) {
+      const utf32s = this.getUtf32Array(chars.getCharAt(i));
+      for (let j = 0; j < utf32s.length; ++j) {
+        utf32Escape.push(prefix + getHex(utf32s[j]) + suffix);
+      }
+    }
+    return utf32Escape.join("");
   }
 }
 
@@ -307,8 +322,8 @@ class Viewer {
     charElement.className = "char";
     charElement.draggable = true;
     const codePoint = this.chars.getCodePointAt(index);
-    const utf8s = this.chars.getUtf8sAt(index);
-    const utf16s = this.chars.getUtf16sAt(index);
+    const utf8s = Encoder.getUtf8Array(this.chars.getCharAt(index));
+    const utf16s = Encoder.getUtf16Array(this.chars.getCharAt(index));
     const codePointHex = getHex(codePoint);
     const utf8String = utf8s.map((code) => { return getHex(code, 2); }).join(" ");
     const utf16String = utf16s.map((code) => { return getHex(code); }).join(" ");
@@ -390,7 +405,7 @@ function setUrl(text, encode) {
 
 const params = new URLSearchParams(window.location.search);
 const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
-const encoding = params.get("encode") || Encoding.getDefaultEncoding();
+const encoding = params.get("encode") || Encoder.getDefaultEncoding();
 
 let viewer = new Viewer(text, encoding);
 addViewer(viewer);
