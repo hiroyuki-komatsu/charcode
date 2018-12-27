@@ -183,18 +183,56 @@ class Chars {
   }
 }
 
+class Encoder {
+  static getEncodings() {
+    return ["utf32-amp", "utf16-u", "utf8-x"];
+  }
+
+  static getDefaultEncoding() {
+    return "utf32-amp";
+  }
+
+  static getLabel(encoding, fallback="") {
+    const dict = {
+      "utf32-amp": "UTF32 &#xNNNN;",
+      "utf16-u": "UTF16 \\uNNNN",
+      "utf8-x": "UTF8 \\xNN",
+    };
+    return dict[encoding] || fallback;
+  }
+
+  static encode(chars, encoding) {
+    let value = "";
+    switch(encoding) {
+      case "utf32-amp":
+        value = chars.getHtmlCode();
+        break;
+      case "utf16-u":
+        value = chars.getJavaCode();
+        break;
+      case "utf8-x":
+        value = chars.getCppCode();
+        break;
+      default:
+        value = "invalid encoding";
+    }
+    return value;
+  }
+}
+
 class EncodeElement {
   constructor(encode, callback) {
     this.element = document.createElement("div");
     this.element.innerHTML = (
-      `<select class="encode">` +
-      `<option value="html">UTF32 &#xNNNN;</option>` +
-      `<option value="utf16">UTF16 \\uNNNN</option>` +
-      `<option value="cpp">UTF8  \\xNN</option>` +
-      `</select>` +
+      `<select class="encode"></select>` +
       `<span class="encoded"></span>`
     );
     this.selectElement = this.element.getElementsByClassName("encode")[0];
+    let optionsHtml = "";
+    for (let encoding of Encoder.getEncodings()) {
+      optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
+    }
+    this.selectElement.innerHTML = optionsHtml;
     this.selectElement.value = encode;
     this.selectElement.addEventListener("change", (event) => {
       callback(event);
@@ -205,29 +243,14 @@ class EncodeElement {
     return this.selectElement.value;
   }
 
-  draw(chars) {
+  draw(value) {
     let encodedElement = this.element.getElementsByClassName("encoded")[0];
-    let value = "";
-
-    switch(this.getEncode()) {
-      case "html":
-        value = chars.getHtmlCode();
-        break;
-      case "utf16":
-        value = chars.getJavaCode();
-        break;
-      case "cpp":
-        value = chars.getCppCode();
-        break;
-      default:
-        value = "";
-    }
     encodedElement.innerText = value;
   }
 }
 
 class Viewer {
-  constructor(value, encode="html") {
+  constructor(value, encode=Encoding.getDefaultEncoding()) {
     this.codePoints = [];
     this.chars = new Chars(value);
 
@@ -259,7 +282,7 @@ class Viewer {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw(this.chars);
+    this.encode.draw(Encoder.encode(this.chars, this.encode.getEncode()));
     setUrl(value, this.encode.getEncode());
   }
 
@@ -360,7 +383,7 @@ function setUrl(text, encode) {
 
 const params = new URLSearchParams(window.location.search);
 const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
-const encode = params.get("encode") || "html";
+const encode = params.get("encode") || Encoding.getDefaultEncoding();
 
 let viewer = new Viewer(text, encode);
 addViewer(viewer);
