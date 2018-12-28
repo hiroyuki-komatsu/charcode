@@ -76,82 +76,6 @@ function getHex(number, size=4) {
   return ("0000" + hex).substr(hex.length, size);
 }
 
-class Session {
-  constructor(id, value, encoding) {
-    this.id = id;
-    this.prevValue = value;
-    this.chars = Session.parse(value);
-    this.prevEncoding = encoding;
-    this.encoding = encoding;
-    this.onUpdateCallback = null;
-  }
-
-  setOnUpdateCallback(func) {
-    this.onUpdateCallback = func;
-  }
-
-  onUpdate() {
-    const value = this.getValue();
-    if (value != this.prevValue || this.encoding != this.prevEncoding) {
-      this.prevValue = value;
-      this.prevEncoding = this.encoding;
-      if (this.onUpdateCallback) {
-        this.onUpdateCallback();
-      }
-    }
-  }
-
-  setValue(value) {
-    this.chars = Session.parse(value);
-    this.onUpdate();
-  }
-
-  getValue() {
-    return this.chars.join("");
-  }
-
-  setEncoding(encoding) {
-    this.encoding = encoding;
-    this.onUpdate();
-  }
-
-  getEncoding() {
-    return this.encoding;
-  }
-
-  getLength() {
-    return this.chars.length;
-  }
-
-  getCharAt(i) {
-    return this.chars[i];
-  }
-
-  getCodePointAt(i) {
-    return this.chars[i].codePointAt(0);
-  }
-
-  static parse(value) {
-    return Encoder.getUtf32Array(value).map(x => String.fromCodePoint(x));
-  }
-
-  replace(index, char) {
-    this.chars.splice(index, 1, char);
-    this.setValue(this.getValue());
-    this.onUpdate();
-  }
-
-  insert(index, char) {
-    this.chars.splice(index, 0, char);
-    this.onUpdate();
-  }
-
-  delete(index) {
-    this.chars.splice(index, 1);
-    this.onUpdate();
-  }
-}
-
 class Encoder {
   static getEncodings() {
     return ["utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
@@ -251,32 +175,79 @@ class Encoder {
   }
 }
 
-class EncodeElement {
-  constructor(encode, callback) {
-    this.element = document.createElement("div");
-    this.element.innerHTML = (
-      `<select class="encode"></select>` +
-      `<span class="encoded"></span>`
-    );
-    this.selectElement = this.element.getElementsByClassName("encode")[0];
-    let optionsHtml = "";
-    for (let encoding of Encoder.getEncodings()) {
-      optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
+class Session {
+  constructor(id, value, encoding) {
+    this.id = id;
+    this.prevValue = value;
+    this.chars = Session.parse(value);
+    this.prevEncoding = encoding;
+    this.encoding = encoding;
+    this.onUpdateCallback = null;
+  }
+
+  setOnUpdateCallback(func) {
+    this.onUpdateCallback = func;
+  }
+
+  onUpdate() {
+    const value = this.getValue();
+    if (value != this.prevValue || this.encoding != this.prevEncoding) {
+      this.prevValue = value;
+      this.prevEncoding = this.encoding;
+      if (this.onUpdateCallback) {
+        this.onUpdateCallback();
+      }
     }
-    this.selectElement.innerHTML = optionsHtml;
-    this.selectElement.value = encode;
-    this.selectElement.addEventListener("change", (event) => {
-      callback(event);
-    });
   }
 
-  getEncode() {
-    return this.selectElement.value;
+  setValue(value) {
+    this.chars = Session.parse(value);
+    this.onUpdate();
   }
 
-  draw(value) {
-    let encodedElement = this.element.getElementsByClassName("encoded")[0];
-    encodedElement.innerText = value;
+  getValue() {
+    return this.chars.join("");
+  }
+
+  setEncoding(encoding) {
+    this.encoding = encoding;
+    this.onUpdate();
+  }
+
+  getEncoding() {
+    return this.encoding;
+  }
+
+  getLength() {
+    return this.chars.length;
+  }
+
+  getCharAt(i) {
+    return this.chars[i];
+  }
+
+  getCodePointAt(i) {
+    return this.chars[i].codePointAt(0);
+  }
+
+  static parse(value) {
+    return Encoder.getUtf32Array(value).map(x => String.fromCodePoint(x));
+  }
+
+  replace(index, char) {
+    this.chars.splice(index, 1, char);
+    this.setValue(this.getValue());
+    this.onUpdate();
+  }
+
+  insert(index, char) {
+    this.chars.splice(index, 0, char);
+    this.onUpdate();
+  }
+
+  delete(index) {
+    this.chars.splice(index, 1);
+    this.onUpdate();
   }
 }
 
@@ -344,6 +315,35 @@ class SessionManager {
   updateUrlParams() {
     const params = this.getUrlParams();
     history.replaceState("", "", location.pathname + "?" + params);
+  }
+}
+
+class EncodeElement {
+  constructor(encode, callback) {
+    this.element = document.createElement("div");
+    this.element.innerHTML = (
+      `<select class="encode"></select>` +
+      `<span class="encoded"></span>`
+    );
+    this.selectElement = this.element.getElementsByClassName("encode")[0];
+    let optionsHtml = "";
+    for (let encoding of Encoder.getEncodings()) {
+      optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
+    }
+    this.selectElement.innerHTML = optionsHtml;
+    this.selectElement.value = encode;
+    this.selectElement.addEventListener("change", (event) => {
+      callback(event);
+    });
+  }
+
+  getEncode() {
+    return this.selectElement.value;
+  }
+
+  draw(value) {
+    let encodedElement = this.element.getElementsByClassName("encoded")[0];
+    encodedElement.innerText = value;
   }
 }
 
