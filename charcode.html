@@ -76,11 +76,11 @@ function getHex(number, size=4) {
   return ("0000" + hex).substr(hex.length, size);
 }
 
-class Chars {
+class Session {
   constructor(id, value, encoding) {
     this.id = id;
     this.prevValue = value;
-    this.chars = Chars.parse(value);
+    this.chars = Session.parse(value);
     this.prevEncoding = encoding;
     this.encoding = encoding;
     this.onUpdateCallback = null;
@@ -102,7 +102,7 @@ class Chars {
   }
 
   setValue(value) {
-    this.chars = Chars.parse(value);
+    this.chars = Session.parse(value);
     this.onUpdate();
   }
 
@@ -283,36 +283,36 @@ class EncodeElement {
 class SessionManager {
   constructor() {
     this.nextId = 0;
-    this.charsArray = [];
+    this.sessionArray = [];
   }
 
-  newChars(value, encoding) {
-    let chars = new Chars(this.nextId, value, encoding);
-    this.charsArray.push(chars);
+  newSession(value, encoding) {
+    let session = new Session(this.nextId, value, encoding);
+    this.sessionArray.push(session);
     this.nextId++;
-    return chars;
+    return session;
   }
 
-  getDndProtocol(chars, index) {
-    return JSON.stringify({ id: chars.id, index: index });
+  getDndProtocol(session, index) {
+    return JSON.stringify({ id: session.id, index: index });
   }
 
   moveChar(srcProtocol, dstProtocol) {
     const src = JSON.parse(srcProtocol);
     const dst = JSON.parse(dstProtocol);
 
-    const char = this.charsArray[src.id].getCharAt(src.index);
-    this.charsArray[src.id].delete(src.index);
-    this.charsArray[dst.id].insert(dst.index, char);
+    const char = this.sessionArray[src.id].getCharAt(src.index);
+    this.sessionArray[src.id].delete(src.index);
+    this.sessionArray[dst.id].insert(dst.index, char);
   }
 
   getUrlParams() {
-    const size = this.charsArray.length;
+    const size = this.sessionArray.length;
     let params = [`s=${size}`];
     for (let i = 0; i < size; ++i) {
-        const chars = this.charsArray[i];
-        const text = encodeURIComponent(chars.getValue());
-        const encoding = encodeURIComponent(chars.encoding);
+        const session = this.sessionArray[i];
+        const text = encodeURIComponent(session.getValue());
+        const encoding = encodeURIComponent(session.encoding);
         params.push(`t${i}=${text}&e${i}=${encoding}`);
     }
     return params.join("&");
@@ -320,14 +320,14 @@ class SessionManager {
 
   parseUrlParams(urlParams) {
     this.nextId = 0;
-    this.charsArray = [];
+    this.sessionArray = [];
 
     const params = new URLSearchParams(urlParams);
     const size = params.get("s") || 0;
 
     if (size == 0) {
-      let chars = this.newChars("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
-      return [chars];
+      let session = this.newSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+      return [session];
     }
 
     let sessions = [];
@@ -335,7 +335,7 @@ class SessionManager {
       const text = params.get(`t${i}`);
       const encoding = params.get(`e${i}`);
       if (text && encoding) {
-        sessions.push(this.newChars(text, encoding));
+        sessions.push(this.newSession(text, encoding));
       }
     }
     return sessions;
@@ -350,8 +350,8 @@ class SessionManager {
 class Viewer {
   constructor(sessionManager, session) {
     this.sessionManager = sessionManager;
-    this.chars = session;
-    this.chars.setOnUpdateCallback(() => {this.draw()});
+    this.session = session;
+    this.session.setOnUpdateCallback(() => {this.draw()});
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
@@ -363,37 +363,37 @@ class Viewer {
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
     this.encode = new EncodeElement(session.getEncoding(), (event) => {
-      this.chars.setEncoding(event.target.value);
+      this.session.setEncoding(event.target.value);
     });
     this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
     this.input.addEventListener("input", (event) => {
-      this.chars.setValue(this.input.value);
+      this.session.setValue(this.input.value);
     });
     this.draw();
   }
 
   draw() {
-    const value = this.chars.getValue();
+    const value = this.session.getValue();
     this.input.value = value;
     this.output.innerHTML = "";
 
-    for (let i = 0; i < this.chars.getLength(); ++i) {
+    for (let i = 0; i < this.session.getLength(); ++i) {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw(Encoder.encode(value, this.chars.getEncoding()));
+    this.encode.draw(Encoder.encode(value, this.session.getEncoding()));
     this.sessionManager.updateUrlParams();
   }
 
   onDrag(event, index) {
-    const protocol = this.sessionManager.getDndProtocol(this.chars, index);
+    const protocol = this.sessionManager.getDndProtocol(this.session, index);
     event.dataTransfer.setData("text/plain", protocol);
   }
 
   onDrop(event, index) {
     const srcProtocol = event.dataTransfer.getData("text/plain");
-    const dstProtocol = this.sessionManager.getDndProtocol(this.chars, index);
+    const dstProtocol = this.sessionManager.getDndProtocol(this.session, index);
     this.sessionManager.moveChar(srcProtocol, dstProtocol);
   }
 
@@ -401,12 +401,12 @@ class Viewer {
     let charElement = document.createElement("div");
     charElement.className = "char";
     charElement.draggable = true;
-    const codePoint = this.chars.getCodePointAt(index);
-    const utf8String = Encoder.encodeUtf8(this.chars.getCharAt(index), "", "", " ");
-    const utf16String = Encoder.encodeUtf16(this.chars.getCharAt(index), "", "", " ");
+    const codePoint = this.session.getCodePointAt(index);
+    const utf8String = Encoder.encodeUtf8(this.session.getCharAt(index), "", "", " ");
+    const utf16String = Encoder.encodeUtf16(this.session.getCharAt(index), "", "", " ");
     const codePointHex = getHex(codePoint);
 
-    const codePointChar = this.chars.getCharAt(index);
+    const codePointChar = this.session.getCharAt(index);
     const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
     charElement.innerHTML = (
       `<div class="delete">✖</div>` +
@@ -417,18 +417,18 @@ class Viewer {
       `<div class="link"><a href="${url}">properties</a></div>`);
     let codePointHexElement = charElement.getElementsByClassName("codePointHex")[0];
     codePointHexElement.addEventListener("change", () => {
-      this.chars.replace(index, String.fromCodePoint(parseInt(codePointHexElement.value, 16)));
+      this.session.replace(index, String.fromCodePoint(parseInt(codePointHexElement.value, 16)));
     });
 
     let codePointCharElement = charElement.getElementsByClassName("codePointChar")[0];
     codePointCharElement.addEventListener("change", () => {
-      this.chars.replace(index, codePointCharElement.value);
+      this.session.replace(index, codePointCharElement.value);
     });
 
     let deleteElement = charElement.getElementsByClassName("delete")[0];
     deleteElement.style.display = "none";
     deleteElement.addEventListener("click", () => {
-      this.chars.delete(index);
+      this.session.delete(index);
     })
 
     // Delete button on mouse over
@@ -462,7 +462,7 @@ class Viewer {
     plus.className = "plus";
     plus.innerText = "⊕";
     plus.addEventListener("click", () => {
-      this.chars.insert(index, " ");
+      this.session.insert(index, " ");
     });
     return plus;
   }
@@ -485,7 +485,7 @@ let addButton = document.createElement("input");
 addButton.type = "button";
 addButton.value = "Add";
 addButton.addEventListener("click", (event) => {
-  let session = sessionManager.newChars("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+  let session = sessionManager.newSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
   addViewer(new Viewer(sessionManager, session));
 });
 document.body.appendChild(addButton);
