@@ -77,10 +77,28 @@ function getHex(number, size=4) {
 }
 
 class Chars {
-  constructor(id, value, onUpdate) {
+  constructor(id, value, encoding) {
     this.id = id;
+    this.prevValue = value;
     this.chars = Chars.parse(value);
-    this.onUpdate = onUpdate;
+    this.prevEncoding = encoding;
+    this.encoding = encoding;
+    this.onUpdateCallback = null;
+  }
+
+  setOnUpdateCallback(func) {
+    this.onUpdateCallback = func;
+  }
+
+  onUpdate() {
+    const value = this.getValue();
+    if (value != this.prevValue || this.encoding != this.prevEncoding) {
+      this.prevValue = value;
+      this.prevEncoding = this.encoding;
+      if (this.onUpdateCallback) {
+        this.onUpdateCallback();
+      }
+    }
   }
 
   setValue(value) {
@@ -90,6 +108,15 @@ class Chars {
 
   getValue() {
     return this.chars.join("");
+  }
+
+  setEncoding(encoding) {
+    this.encoding = encoding;
+    this.onUpdate();
+  }
+
+  getEncoding() {
+    return this.encoding;
   }
 
   getLength() {
@@ -256,38 +283,75 @@ class EncodeElement {
 class SessionManager {
   constructor() {
     this.nextId = 0;
-    this.data = {};
+    this.charsArray = [];
   }
 
-  newChars(value, onUpdate) {
-    let chars = new Chars(this.nextId, value, onUpdate);
-    this.data[this.nextId] = chars;
+  newChars(value, encoding) {
+    let chars = new Chars(this.nextId, value, encoding);
+    this.charsArray.push(chars);
     this.nextId++;
     return chars;
   }
 
   getDndProtocol(chars, index) {
-    return [chars.id, index].join("\t");
+    return JSON.stringify({ id: chars.id, index: index });
   }
 
   moveChar(srcProtocol, dstProtocol) {
-    const src = srcProtocol.split("\t");
-    const srcId = parseInt(src[0]);
-    const srcIndex = parseInt(src[1]);
-    const dst = dstProtocol.split("\t");
-    const dstId = parseInt(dst[0]);
-    const dstIndex = parseInt(dst[1]);
+    const src = JSON.parse(srcProtocol);
+    const dst = JSON.parse(dstProtocol);
 
-    const char = this.data[srcId].getCharAt(srcIndex);
-    this.data[srcId].delete(srcIndex);
-    this.data[dstId].insert(dstIndex, char);
+    const char = this.charsArray[src.id].getCharAt(src.index);
+    this.charsArray[src.id].delete(src.index);
+    this.charsArray[dst.id].insert(dst.index, char);
+  }
+
+  getUrlParams() {
+    const size = this.charsArray.length;
+    let params = [`s=${size}`];
+    for (let i = 0; i < size; ++i) {
+        const chars = this.charsArray[i];
+        const text = encodeURIComponent(chars.getValue());
+        const encoding = encodeURIComponent(chars.encoding);
+        params.push(`t${i}=${text}&e${i}=${encoding}`);
+    }
+    return params.join("&");
+  }
+
+  parseUrlParams(urlParams) {
+    this.nextId = 0;
+    this.charsArray = [];
+
+    const params = new URLSearchParams(urlParams);
+    const size = params.get("s") || 0;
+
+    if (size == 0) {
+      let chars = this.newChars("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+      return [chars];
+    }
+
+    let sessions = [];
+    for (let i = 0; i < size; ++i) {
+      const text = params.get(`t${i}`);
+      const encoding = params.get(`e${i}`);
+      if (text && encoding) {
+        sessions.push(this.newChars(text, encoding));
+      }
+    }
+    return sessions;
+  }
+
+  updateUrlParams() {
+    const params = this.getUrlParams();
+    history.replaceState("", "", location.pathname + "?" + params);
   }
 }
 
 class Viewer {
-  constructor(sessionManager, value, encoding) {
+  constructor(sessionManager, session) {
     this.sessionManager = sessionManager;
-    this.chars = sessionManager.newChars(value, () => {this.draw()});
+    this.chars = session;
+    this.chars.setOnUpdateCallback(() => {this.draw()});
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
@@ -298,7 +362,9 @@ class Viewer {
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
-    this.encode = new EncodeElement(encoding, (event) => {this.draw();});
+    this.encode = new EncodeElement(session.getEncoding(), (event) => {
+      this.chars.setEncoding(event.target.value);
+    });
     this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
     this.input.addEventListener("input", (event) => {
@@ -316,8 +382,8 @@ class Viewer {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw(Encoder.encode(value, this.encode.getEncode()));
-    setUrl(value, this.encode.getEncode());
+    this.encode.draw(Encoder.encode(value, this.chars.getEncoding()));
+    this.sessionManager.updateUrlParams();
   }
 
   onDrag(event, index) {
@@ -406,25 +472,21 @@ function addViewer(viewer) {
   document.getElementById("main").appendChild(viewer.base);
 }
 
-function setUrl(text, encode) {
-  const params = `text=${encodeURIComponent(text)}&encode=${encodeURIComponent(encode)}`;
-  history.replaceState("", "", location.pathname + "?" + params);
-}
-
 const params = new URLSearchParams(window.location.search);
-const text = params.get("text") || "(๑•̀ㅂ•́)و✧";
-const encoding = params.get("encode") || Encoder.getDefaultEncoding();
-
 let sessionManager = new SessionManager();
+let sessions = sessionManager.parseUrlParams(params);
 
-let viewer = new Viewer(sessionManager, text, encoding);
-addViewer(viewer);
+for (let session of sessions) {
+  let viewer = new Viewer(sessionManager, session);
+  addViewer(viewer);
+}
 
 let addButton = document.createElement("input");
 addButton.type = "button";
 addButton.value = "Add";
 addButton.addEventListener("click", (event) => {
-  addViewer(new Viewer(sessionManager, "(๑•̀ㅂ•́)و✧", encoding));
+  let session = sessionManager.newChars("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+  addViewer(new Viewer(sessionManager, session));
 });
 document.body.appendChild(addButton);
     </script>
