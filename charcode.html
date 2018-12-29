@@ -78,7 +78,7 @@ function getHex(number, size=4) {
 
 class Encoder {
   static getEncodings() {
-    return ["utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
+    return ["text", "utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
   }
 
   static getDefaultEncoding() {
@@ -87,6 +87,7 @@ class Encoder {
 
   static getLabel(encoding, fallback="") {
     const dict = {
+      "text": "text",
       "utf32-amp": "UTF32 &#xNNNN;",
       "utf32-u": "UTF32 \\u{NNNN}",
       "utf16-u": "UTF16 \\uNNNN",
@@ -99,10 +100,13 @@ class Encoder {
   static encode(value, encoding) {
     let encoded = "";
     switch(encoding) {
+      case "text":
+        encoded = value;
+        break;
       case "utf32-amp":
         encoded = this.encodeUtf32(value, "&#x", ";");
         break;
-        case "utf32-u":
+      case "utf32-u":
         encoded = this.encodeUtf32(value, "\\u{", "}");
         break;
       case "utf16-u":
