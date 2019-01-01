@@ -348,12 +348,9 @@ class SessionManager {
 
 class EncodeElement {
   constructor(encode, callback) {
-    this.element = document.createElement("div");
-    this.element.innerHTML = (
-      `<select class="encode"></select>` +
-      `<span class="encoded"></span>`
-    );
-    this.selectElement = this.element.getElementsByClassName("encode")[0];
+    this.element = document.createElement("select");
+    this.element.className = "encode";
+    this.selectElement = this.element;
     let optionsHtml = "";
     for (let encoding of Encoder.getEncodings()) {
       optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
@@ -365,13 +362,12 @@ class EncodeElement {
     });
   }
 
-  getEncode() {
+  getEncoding() {
     return this.selectElement.value;
   }
 
-  draw(value) {
-    let encodedElement = this.element.getElementsByClassName("encoded")[0];
-    encodedElement.innerText = value;
+  setEncoding(encoding) {
+    this.selectElement.value = encoding;
   }
 }
 
@@ -395,6 +391,10 @@ class Viewer {
     });
     this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
 
+    let encodedElement = document.createElement("span");
+    encodedElement.className = "encoded";
+    this.base.getElementsByClassName("encode")[0].appendChild(encodedElement);
+
     this.input.addEventListener("input", (event) => {
       this.session.setValue(this.input.value);
     });
@@ -410,7 +410,11 @@ class Viewer {
       this.output.appendChild(this.createCharElement(i));
     }
     this.output.appendChild(this.createPlusElement(value.length));
-    this.encode.draw(Encoder.encode(value, this.session.getEncoding()));
+
+    const encoded = Encoder.encode(value, this.session.getEncoding());
+    let encodedElement = this.base.getElementsByClassName("encoded")[0];
+    encodedElement.innerText = encoded;
+
     this.sessionManager.updateUrlParams();
   }
 
