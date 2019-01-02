@@ -368,7 +368,11 @@ customElements.define("encoding-select", class extends HTMLElement {
       optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
     }
     optionsHtml += "</select>";
-    root.innerHTML = optionsHtml;
+    root.innerHTML = optionsHtml + root.innerHTML;
+  }
+
+  selectElement() {
+    return this.getElementsByTagName("select")[0];
   }
 });
 
@@ -380,25 +384,30 @@ class Viewer {
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
+      `<encoding-select></encoding-select>` +
       `<input type="text" class="text"></input>` +
       `<div class="output"></div>` +
-      `<div class="encode">` +
-      // <select></select>
-      //`<encoding-select></encoding-select>` +
+      `<encoding-select></encoding-select>` +
       `<span class="encoded"></span>` +
-      `</div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
 
-    let selector = createEncodingSelectElement();
-    selector.value = session.getEncoding()
-    selector.onchange = (event) => {
-      this.session.setEncoding(event.target.value);
-    };
+    let encodingSelectElements = this.base.getElementsByTagName("encoding-select");
+    let inputSelect = encodingSelectElements[0].selectElement();
+    // inputSelect.value = "text";
+    inputSelect.addEventListener("change", (event) => {
+      const value = this.session.getValue();
+      const encoding = event.target.value;
+      this.input.value = Encoder.encode(value, encoding);
+    });
 
-    this.base.getElementsByClassName("encode")[0].prepend(selector);
+    let selector = this.base.getElementsByTagName("encoding-select")[1].selectElement();
+    selector.value = session.getEncoding();
+    selector.addEventListener("change", (event) => {
+      this.session.setEncoding(event.target.value);
+    });
 
     this.input.addEventListener("input", (event) => {
       this.session.setValue(this.input.value);
