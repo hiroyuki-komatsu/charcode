@@ -350,24 +350,24 @@ class EncodeElement {
   constructor(encode, callback) {
     this.element = document.createElement("select");
     this.element.className = "encode";
-    this.selectElement = this.element;
+    this.element = this.element;
     let optionsHtml = "";
     for (let encoding of Encoder.getEncodings()) {
       optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
     }
-    this.selectElement.innerHTML = optionsHtml;
-    this.selectElement.value = encode;
-    this.selectElement.addEventListener("change", (event) => {
+    this.element.innerHTML = optionsHtml;
+    this.element.value = encode;
+    this.element.addEventListener("change", (event) => {
       callback(event);
     });
   }
 
   getEncoding() {
-    return this.selectElement.value;
+    return this.element.value;
   }
 
   setEncoding(encoding) {
-    this.selectElement.value = encoding;
+    this.element.value = encoding;
   }
 }
 
@@ -381,19 +381,18 @@ class Viewer {
     this.base.innerHTML = (
       `<input type="text" class="text"></input>` +
       `<div class="output"></div>` +
-      `<div class="encode"></div>` +
+      `<div class="encode">` +
+      // <select></select>
+      `<span class="encoded"></span>` +
+      `</div>` +
       `<hr />`);
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
-    this.encode = new EncodeElement(session.getEncoding(), (event) => {
+    let selector = new EncodeElement(session.getEncoding(), (event) => {
       this.session.setEncoding(event.target.value);
     });
-    this.base.getElementsByClassName("encode")[0].appendChild(this.encode.element);
-
-    let encodedElement = document.createElement("span");
-    encodedElement.className = "encoded";
-    this.base.getElementsByClassName("encode")[0].appendChild(encodedElement);
+    this.base.getElementsByClassName("encode")[0].prepend(selector.element);
 
     this.input.addEventListener("input", (event) => {
       this.session.setValue(this.input.value);
