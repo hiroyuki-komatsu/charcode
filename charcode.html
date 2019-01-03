@@ -203,6 +203,111 @@ class Encoder {
   }
 }
 
+class Decoder {
+  static getEncodings() {
+    return ["text", "utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
+  }
+
+  static getDefaultEncoding() {
+    return "utf32-amp";
+  }
+
+  static getLabel(encoding, fallback="") {
+    const dict = {
+      "text": "text",
+      "utf32-amp": "UTF32 &#xNNNN;",
+      "utf32-u": "UTF32 \\u{NNNN}",
+      "utf16-u": "UTF16 \\uNNNN",
+      "utf8-x": "UTF8 \\xNN",
+      "utf8-pct": "UTF8 %NN",
+    };
+    return dict[encoding] || fallback;
+  }
+
+  static decode(value, encoding) {
+    let decoded = "";
+    switch(encoding) {
+      case "text":
+        decoded = value;
+        break;
+      case "utf32-amp":
+        // decoded = this.decodeUtf32(value, "&#x", ";");
+        break;
+      case "utf32-u":
+        // decoded = this.decodeUtf32(value, "\\u{", "}");
+        break;
+      case "utf16-u":
+        // decoded = this.decodeUtf16(value, "\\u", "");
+        break;
+      case "utf8-x":
+        // decoded = this.decodeUtf8(value, "\\x", "");
+        decoded = decodeURIComponent(value.replace(/\\x([a-fA-F0-9])/g, "%$1"));
+        break;
+      case "utf8-pct":
+        // decoded = this.decodeUtf8(value, "%", "");
+        decoded = decodeURIComponent(value);
+        break;
+      default:
+        decoded = "invalid encoding";
+    }
+    return decoded;
+  }
+
+  static getUtf8Array(str) {
+    let utf8s = [];
+    const utf8encoded = encodeURIComponent(str);
+    for (let i = 0; i < utf8encoded.length; ++i) {
+      if (utf8encoded[i] != "%") {
+        utf8s.push(utf8encoded[i].charCodeAt(0));
+      } else {
+        utf8s.push(parseInt(utf8encoded.slice(i + 1, i + 3), 16));
+        i += 2;
+      }
+    }
+    return utf8s;
+  }
+
+  static getUtf16Array(str) {
+    let utf16s = [];
+    for (let i = 0; i < str.length; ++i) {
+      utf16s.push(str.charCodeAt(i));
+    }
+    return utf16s;
+  }
+
+  static getUtf32Array(str) {
+    let utf32s = [];
+    for (let i = 0; i < str.length; ++i) {
+      const codePoint = str.codePointAt(i);
+      const charCode = str.charCodeAt(i);
+      // If codePoint is more than 0xFFFF, charCode is a part of surrogate pair.
+      if (codePoint !== charCode) {
+        i++;
+      }
+      utf32s.push(codePoint);
+    }
+    return utf32s;
+  }
+
+  static decodeUtf(str, getUtfArrayFunc, size, prefix="", suffix="", delimiter="") {
+    const utfs = getUtfArrayFunc(str);
+    const encoded = utfs.map(x => { return prefix + getHex(x, size) + suffix; });
+    return encoded.join(delimiter);
+  }
+
+  static decodeUtf8(str, prefix="", suffix="", delimiter="") {
+    return this.decodeUtf(str, this.getUtf8Array, 2, prefix, suffix, delimiter);
+  }
+
+  static decodeUtf16(str, prefix="", suffix="", delimiter="") {
+    return this.decodeUtf(str, this.getUtf16Array, 4, prefix, suffix, delimiter);
+  }
+
+  static decodeUtf32(str, prefix="", suffix="", delimiter="") {
+    return this.decodeUtf(str, this.getUtf32Array, 4, prefix, suffix, delimiter);
+  }
+}
+
 class Session {
   constructor(id, value, encoding) {
     this.id = id;
@@ -395,12 +500,25 @@ class Viewer {
     this.output = this.base.getElementsByClassName("output")[0];
 
     let encodingSelectElements = this.base.getElementsByTagName("encoding-select");
-    let inputSelect = encodingSelectElements[0].selectElement();
+    this.inputSelect = encodingSelectElements[0].selectElement();
     // inputSelect.value = "text";
-    inputSelect.addEventListener("change", (event) => {
+    this.inputSelect.addEventListener("change", (event) => {
       const value = this.session.getValue();
-      const encoding = event.target.value;
-      this.input.value = Encoder.encode(value, encoding);
+      this.setInputValue(value);
+    });
+    this.input.addEventListener("input", (event) => {
+      const encoding = this.inputSelect.value;
+      if (encoding != "text") {
+        return;
+      }
+      this.session.setValue(Decoder.decode(this.input.value, encoding));
+    });
+    this.input.addEventListener("keypress", (event) => {
+      if (event.keyCode != 13) {
+        return;
+      }
+      const encoding = this.inputSelect.value;
+      this.session.setValue(Decoder.decode(this.input.value, encoding));
     });
 
     let selector = this.base.getElementsByTagName("encoding-select")[1].selectElement();
@@ -409,15 +527,12 @@ class Viewer {
       this.session.setEncoding(event.target.value);
     });
 
-    this.input.addEventListener("input", (event) => {
-      this.session.setValue(this.input.value);
-    });
     this.draw();
   }
 
   draw() {
     const value = this.session.getValue();
-    this.input.value = value;
+    this.setInputValue(value);
     this.output.innerHTML = "";
 
     for (let i = 0; i < this.session.getLength(); ++i) {
@@ -430,6 +545,11 @@ class Viewer {
     encodedElement.innerText = encoded;
 
     this.sessionManager.updateUrlParams();
+  }
+
+  setInputValue(value) {
+    const encoding = this.inputSelect.value;
+    this.input.value = Encoder.encode(value, encoding);
   }
 
   onDrag(event, index) {
