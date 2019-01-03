@@ -29,6 +29,10 @@ input[type="button"] {
   font-size: 30px;
 }
 
+.modified {
+  background-color: pink;
+}
+
 .char {
   display: inline-block;
   width: 80px;
@@ -241,7 +245,8 @@ class Decoder {
         break;
       case "utf8-x":
         // decoded = this.decodeUtf8(value, "\\x", "");
-        decoded = decodeURIComponent(value.replace(/\\x([a-fA-F0-9])/g, "%$1"));
+        const escaped = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
+        decoded = decodeURIComponent(escaped.replace(/\\x([a-fA-F0-9])/g, "%$1"));
         break;
       case "utf8-pct":
         // decoded = this.decodeUtf8(value, "%", "");
@@ -508,17 +513,23 @@ class Viewer {
     });
     this.input.addEventListener("input", (event) => {
       const encoding = this.inputSelect.value;
-      if (encoding != "text") {
-        return;
+      const decoded = Decoder.decode(this.input.value, encoding);
+      if (encoding == "text") {
+        this.session.setValue(decoded);
       }
-      this.session.setValue(Decoder.decode(this.input.value, encoding));
+
+      const modified = (this.session.getValue() != decoded);
+      this.input.classList.toggle("modified", modified);
     });
     this.input.addEventListener("keypress", (event) => {
-      if (event.keyCode != 13) {
-        return;
-      }
       const encoding = this.inputSelect.value;
-      this.session.setValue(Decoder.decode(this.input.value, encoding));
+      const decoded = Decoder.decode(this.input.value, encoding);
+      if (event.keyCode == 13) {
+        this.session.setValue(decoded);
+      }
+
+      const modified = (this.session.getValue() != decoded);
+      this.input.classList.toggle("modified", modified);
     });
 
     let selector = this.base.getElementsByTagName("encoding-select")[1].selectElement();
