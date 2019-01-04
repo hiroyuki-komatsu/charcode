@@ -2,15 +2,20 @@
   <head>
     <style>
 body {
-  font-size: 16px;
+  margin: 1em;
+}
+
+hr {
+  margin: 2em 0em;
+  border-color: #fafafa;
 }
 
 select {
-  font-size: 16px;
-  background-color: #fafafa;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  height: 34px;
+  background-color: transparent;
+  border: 0px;
+  /* height: 34px; */
+  margin-right: 2em;
+  outline: none;
 }
 
 input[type="button"] {
@@ -22,24 +27,29 @@ input[type="button"] {
 }
 
 .text {
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  height: 34px;
-  font-size: 30px;
+  border: 0px;
+  border-bottom: 3px solid #aaa;
+  width: 80%;
+  height: 50px;
+  font-size: 40px;
 }
 
-input.modified {
+.text:focus {
+  outline: none;
+  border-bottom: 3px solid #aaf;
+}
+
+.text.modified {
   background-color: lightyellow;
 }
-input.error {
+.text.error {
   background-color: pink;
 }
 
 .char {
   display: inline-block;
-  width: 80px;
-  height: 130px;
+  width: 70px;
+  height: 100px;
   vertical-align: top;
   margin: 2px;
   margin-top: 10px;
@@ -49,7 +59,14 @@ input.error {
   box-shadow: 1px 1px 1px lightgrey;
 }
 
+.char:hover {
+  box-shadow: 1px 1px 1px lightgrey;
+}
+
 .char input {
+  outline: none;
+  border: 0px;
+  border-bottom: 1px solid #aaa;
   font-size: 16px;
   width: 100%;
 }
@@ -73,13 +90,14 @@ input.error {
 
 .plus {
   display: inline-block;
+  color: #666;
   font-size: 46px;
   width: 50px;
   height: 80px;
   vertical-align: middle;
   margin: 0px;
   padding: 20px;
-  padding-top: 50px;
+  padding-top: 30px;
 }
 
 .utf8 {
@@ -92,6 +110,13 @@ input.error {
 
 .link {
   font-size: 10px;
+}
+
+.delete-session {
+  float: right;
+  border: 0px;
+  color: #666;
+  font-size: 16px;
 }
     </style>
   </head>
@@ -348,7 +373,14 @@ class SessionManager {
     let session = new Session(this.nextId, value, encoding);
     this.sessionArray.push(session);
     this.nextId++;
+    this.updateUrlParams();
     return session;
+  }
+
+  removeSession(id) {
+    this.sessionArray.splice(id, 1);
+    this.updateUrlParams();
+    makeWorld(this);
   }
 
   getDndProtocol(session, index) {
@@ -374,6 +406,13 @@ class SessionManager {
         params.push(`t${i}=${text}&e${i}=${encoding}`);
     }
     return params.join("&");
+  }
+
+  loadUrlParams(urlParams) {
+    let sessions = this.parseUrlParams(urlParams);
+    this.nextId = sessions.length;
+    this.sessionArray = sessions;
+    this.updateUrlParams();
   }
 
   parseUrlParams(urlParams) {
@@ -443,12 +482,21 @@ class Viewer {
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
+      `<button class="delete-session">✗</button>`+
+      `<p>` +
       `<encoding-select></encoding-select>` +
-      `<input type="text" class="text"></input>` +
-      `<div class="output"></div>` +
+      `<input type="text" class="text"></input><br/>` +
+      `</p>` +
+      `<p>` +
       `<encoding-select></encoding-select>` +
       `<span class="encoded"></span>` +
+      `</p>` +
+      `<div class="output"></div>` +
       `<hr />`);
+
+    this.base.getElementsByClassName("delete-session")[0].addEventListener("click", (event) => {
+      this.sessionManager.removeSession(this.session.id);
+    });
 
     this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
@@ -616,14 +664,19 @@ function addViewer(viewer) {
   document.getElementById("main").appendChild(viewer.base);
 }
 
+function makeWorld(sessionManager) {
+  let main = document.getElementById("main");
+  main.innerHTML = "";
+  for (let session of sessionManager.sessionArray) {
+    let viewer = new Viewer(sessionManager, session);
+    addViewer(viewer);
+  }
+}
+
 const params = new URLSearchParams(window.location.search);
 let sessionManager = new SessionManager();
-let sessions = sessionManager.parseUrlParams(params);
-
-for (let session of sessions) {
-  let viewer = new Viewer(sessionManager, session);
-  addViewer(viewer);
-}
+sessionManager.loadUrlParams(params);
+makeWorld(sessionManager);
 
 let addButton = document.createElement("input");
 addButton.type = "button";
