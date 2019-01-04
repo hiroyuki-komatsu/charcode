@@ -238,10 +238,12 @@ class Decoder {
         decoded = value;
         break;
       case "utf32-amp":
-        // decoded = this.decodeUtf32(value, "&#x", ";");
+        let parser = new DOMParser();
+        const dom = parser.parseFromString(value, 'text/html');
+        decoded = dom.body.textContent;
         break;
       case "utf32-u":
-        // decoded = this.decodeUtf32(value, "\\u{", "}");
+        decoded = eval('"' + value.replace(/"/g, '\\"') + '"');
         break;
       case "utf16-u":
         decoded = JSON.parse('"' + value.replace(/"/g, '\\"') + '"');
@@ -257,60 +259,6 @@ class Decoder {
         decoded = "invalid encoding";
     }
     return decoded;
-  }
-
-  static getUtf8Array(str) {
-    let utf8s = [];
-    const utf8encoded = encodeURIComponent(str);
-    for (let i = 0; i < utf8encoded.length; ++i) {
-      if (utf8encoded[i] != "%") {
-        utf8s.push(utf8encoded[i].charCodeAt(0));
-      } else {
-        utf8s.push(parseInt(utf8encoded.slice(i + 1, i + 3), 16));
-        i += 2;
-      }
-    }
-    return utf8s;
-  }
-
-  static getUtf16Array(str) {
-    let utf16s = [];
-    for (let i = 0; i < str.length; ++i) {
-      utf16s.push(str.charCodeAt(i));
-    }
-    return utf16s;
-  }
-
-  static getUtf32Array(str) {
-    let utf32s = [];
-    for (let i = 0; i < str.length; ++i) {
-      const codePoint = str.codePointAt(i);
-      const charCode = str.charCodeAt(i);
-      // If codePoint is more than 0xFFFF, charCode is a part of surrogate pair.
-      if (codePoint !== charCode) {
-        i++;
-      }
-      utf32s.push(codePoint);
-    }
-    return utf32s;
-  }
-
-  static decodeUtf(str, getUtfArrayFunc, size, prefix="", suffix="", delimiter="") {
-    const utfs = getUtfArrayFunc(str);
-    const encoded = utfs.map(x => { return prefix + getHex(x, size) + suffix; });
-    return encoded.join(delimiter);
-  }
-
-  static decodeUtf8(str, prefix="", suffix="", delimiter="") {
-    return this.decodeUtf(str, this.getUtf8Array, 2, prefix, suffix, delimiter);
-  }
-
-  static decodeUtf16(str, prefix="", suffix="", delimiter="") {
-    return this.decodeUtf(str, this.getUtf16Array, 4, prefix, suffix, delimiter);
-  }
-
-  static decodeUtf32(str, prefix="", suffix="", delimiter="") {
-    return this.decodeUtf(str, this.getUtf32Array, 4, prefix, suffix, delimiter);
   }
 }
 
