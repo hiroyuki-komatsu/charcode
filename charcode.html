@@ -244,15 +244,13 @@ class Decoder {
         // decoded = this.decodeUtf32(value, "\\u{", "}");
         break;
       case "utf16-u":
-        // decoded = this.decodeUtf16(value, "\\u", "");
+        decoded = JSON.parse('"' + value.replace(/"/g, '\\"') + '"');
         break;
       case "utf8-x":
-        // decoded = this.decodeUtf8(value, "\\x", "");
         const escaped = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
         decoded = decodeURIComponent(escaped.replace(/\\x/g, "%"));
         break;
       case "utf8-pct":
-        // decoded = this.decodeUtf8(value, "%", "");
         decoded = decodeURIComponent(value);
         break;
       default:
