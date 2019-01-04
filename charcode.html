@@ -514,7 +514,6 @@ class Viewer {
       deleteSession.style.display = "none";
     });
 
-    this.input = this.base.getElementsByClassName("text")[0];
     this.output = this.base.getElementsByClassName("output")[0];
 
     let encodingSelectElements = this.base.getElementsByTagName("encoding-select");
@@ -524,43 +523,21 @@ class Viewer {
       const value = this.session.getValue();
       this.setInputValue(value);
     });
-    this.input.addEventListener("input", (event) => {
-      const encoding = this.inputSelect.value;
-      let decoded = "";
-      try {
-        decoded = Decoder.decode(this.input.value, encoding);
-      } catch (e) {
-        this.input.classList.toggle("error", true);
-        this.input.classList.toggle("modified", false);
-        return;
-      }
-      this.input.classList.toggle("error", false);
 
-      if (encoding == "text") {
-        this.session.setValue(decoded);
-      }
+    // Text field
+    this.textField = this.base.getElementsByClassName("text")[0];
 
-      const modified = (this.session.getValue() != decoded);
-      this.input.classList.toggle("modified", modified);
+    this.textField.addEventListener("input", (event) => {
+      const willUpdateSession = (this.inputSelect.value == "text");
+      this.updateTextField(willUpdateSession);
     });
-    this.input.addEventListener("keypress", (event) => {
-      const encoding = this.inputSelect.value;
-      let decoded = "";
-      try {
-        decoded = Decoder.decode(this.input.value, encoding);
-      } catch (e) {
-        this.input.classList.toggle("error", true);
-        this.input.classList.toggle("modified", false);
+
+    this.textField.addEventListener("keydown", (event) => {
+      if (event.keyCode != 13) {
         return;
       }
-      this.input.classList.toggle("error", false);
-
-      if (event.keyCode == 13) {
-        this.session.setValue(decoded);
-      }
-
-      const modified = (this.session.getValue() != decoded);
-      this.input.classList.toggle("modified", modified);
+      const willUpdateSession = true;
+      this.updateTextField(willUpdateSession);
     });
 
     let selector = this.base.getElementsByTagName("encoding-select")[1].selectElement();
@@ -570,6 +547,23 @@ class Viewer {
     });
 
     this.draw();
+  }
+
+  updateTextField(willUpdateSession) {
+    const encoding = this.inputSelect.value;
+    let decoded = "";
+    let error = false;
+    try {
+      decoded = Decoder.decode(this.textField.value, encoding);
+    } catch (e) {
+      error = true;
+    }
+    if (!error && willUpdateSession) {
+      this.session.setValue(decoded);
+    }
+    const modified = !error && (this.session.getValue() != decoded);
+    this.textField.classList.toggle("modified", modified);
+    this.textField.classList.toggle("error", error);
   }
 
   draw() {
@@ -591,7 +585,7 @@ class Viewer {
 
   setInputValue(value) {
     const encoding = this.inputSelect.value;
-    this.input.value = Encoder.encode(value, encoding);
+    this.textField.value = Encoder.encode(value, encoding);
   }
 
   onDrag(event, index) {
