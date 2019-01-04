@@ -117,6 +117,13 @@ input[type="button"] {
   border: 0px;
   color: #666;
   font-size: 16px;
+  width: 2em;
+  height: 2em;
+  outline: none;
+}
+.delete-session:hover {
+  border: 2px solid #aaf;
+  border-radius: 50%;
 }
     </style>
   </head>
@@ -482,7 +489,7 @@ class Viewer {
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
-      `<button class="delete-session">✗</button>`+
+      `<button class="delete-session" title="Delete this session.">✗</button>`+
       `<p>` +
       `<encoding-select></encoding-select>` +
       `<input type="text" class="text"></input><br/>` +
@@ -494,8 +501,17 @@ class Viewer {
       `<div class="output"></div>` +
       `<hr />`);
 
-    this.base.getElementsByClassName("delete-session")[0].addEventListener("click", (event) => {
+    let deleteSession = this.base.getElementsByClassName("delete-session")[0];
+    deleteSession.addEventListener("click", (event) => {
       this.sessionManager.removeSession(this.session.id);
+    });
+    // Delete button on mouse over
+    deleteSession.style.display = "none";
+    this.base.addEventListener("mouseover", () => {
+      deleteSession.style.display = "";
+    });
+    this.base.addEventListener("mouseleave", () => {
+      deleteSession.style.display = "none";
     });
 
     this.input = this.base.getElementsByClassName("text")[0];
