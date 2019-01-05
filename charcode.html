@@ -160,6 +160,36 @@ class Encoder {
     return dict[encoding] || fallback;
   }
 
+  static decode(value, encoding) {
+    let decoded = "";
+    switch(encoding) {
+      case "text":
+        decoded = value;
+        break;
+      case "utf32-amp":
+        let parser = new DOMParser();
+        const dom = parser.parseFromString(value, 'text/html');
+        decoded = dom.body.textContent;
+        break;
+      case "utf32-u":
+        decoded = eval('"' + value.replace(/"/g, '\\"') + '"');
+        break;
+      case "utf16-u":
+        decoded = JSON.parse('"' + value.replace(/"/g, '\\"') + '"');
+        break;
+      case "utf8-x":
+        const escaped = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
+        decoded = decodeURIComponent(escaped.replace(/\\x/g, "%"));
+        break;
+      case "utf8-pct":
+        decoded = decodeURIComponent(value);
+        break;
+      default:
+        decoded = "invalid encoding";
+    }
+    return decoded;
+  }
+
   static encode(value, encoding) {
     let encoded = "";
     switch(encoding) {
@@ -239,58 +269,6 @@ class Encoder {
 
   static encodeUtf32(str, prefix="", suffix="", delimiter="") {
     return this.encodeUtf(str, this.getUtf32Array, 4, prefix, suffix, delimiter);
-  }
-}
-
-class Decoder {
-  static getEncodings() {
-    return ["text", "utf32-amp", "utf32-u", "utf16-u", "utf8-x", "utf8-pct"];
-  }
-
-  static getDefaultEncoding() {
-    return "utf32-amp";
-  }
-
-  static getLabel(encoding, fallback="") {
-    const dict = {
-      "text": "text",
-      "utf32-amp": "UTF32 &#xNNNN;",
-      "utf32-u": "UTF32 \\u{NNNN}",
-      "utf16-u": "UTF16 \\uNNNN",
-      "utf8-x": "UTF8 \\xNN",
-      "utf8-pct": "UTF8 %NN",
-    };
-    return dict[encoding] || fallback;
-  }
-
-  static decode(value, encoding) {
-    let decoded = "";
-    switch(encoding) {
-      case "text":
-        decoded = value;
-        break;
-      case "utf32-amp":
-        let parser = new DOMParser();
-        const dom = parser.parseFromString(value, 'text/html');
-        decoded = dom.body.textContent;
-        break;
-      case "utf32-u":
-        decoded = eval('"' + value.replace(/"/g, '\\"') + '"');
-        break;
-      case "utf16-u":
-        decoded = JSON.parse('"' + value.replace(/"/g, '\\"') + '"');
-        break;
-      case "utf8-x":
-        const escaped = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
-        decoded = decodeURIComponent(escaped.replace(/\\x/g, "%"));
-        break;
-      case "utf8-pct":
-        decoded = decodeURIComponent(value);
-        break;
-      default:
-        decoded = "invalid encoding";
-    }
-    return decoded;
   }
 }
 
@@ -481,6 +459,16 @@ customElements.define("encoding-select", class extends HTMLElement {
   }
 });
 
+function showElementOnMouseMove(targetElement, hostElement) {
+  targetElement.style.display = "none";
+  hostElement.addEventListener("mouseover", () => {
+    targetElement.style.display = "";
+  });
+  hostElement.addEventListener("mouseleave", () => {
+    targetElement.style.display = "none";
+  });
+}
+
 class Viewer {
   constructor(sessionManager, session) {
     this.sessionManager = sessionManager;
@@ -506,13 +494,7 @@ class Viewer {
       this.sessionManager.removeSession(this.session.id);
     });
     // Delete button on mouse over
-    deleteSession.style.display = "none";
-    this.base.addEventListener("mouseover", () => {
-      deleteSession.style.display = "";
-    });
-    this.base.addEventListener("mouseleave", () => {
-      deleteSession.style.display = "none";
-    });
+    showElementOnMouseMove(deleteSession, this.base);
 
     this.output = this.base.getElementsByClassName("output")[0];
 
@@ -533,7 +515,7 @@ class Viewer {
     });
 
     this.textField.addEventListener("keydown", (event) => {
-      if (event.keyCode != 13) {
+      if (event.keyCode != 13) {  // 13 == Enter key.
         return;
       }
       const willUpdateSession = true;
@@ -554,7 +536,7 @@ class Viewer {
     let decoded = "";
     let error = false;
     try {
-      decoded = Decoder.decode(this.textField.value, encoding);
+      decoded = Encoder.decode(this.textField.value, encoding);
     } catch (e) {
       error = true;
     }
@@ -634,12 +616,7 @@ class Viewer {
     })
 
     // Delete button on mouse over
-    charElement.addEventListener("mouseover", () => {
-      deleteElement.style.display = "";
-    });
-    charElement.addEventListener("mouseleave", () => {
-      deleteElement.style.display = "none";
-    });
+    showElementOnMouseMove(deleteElement, charElement);
 
     // Drag and Drop
     charElement.addEventListener("dragstart", () => {
