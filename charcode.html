@@ -350,35 +350,60 @@ class Session {
 
 class SessionManager {
   constructor() {
-    this.nextId = 0;
     this.sessionArray = [];
+    this.sessionViewArray = [];
   }
 
-  newSession(value, encoding) {
-    let session = new Session(this.nextId, value, encoding);
+  addSession(value, encoding) {
+    let session = new Session(this.sessionArray.length, value, encoding);
     this.sessionArray.push(session);
-    this.nextId++;
-    this.updateUrlParams();
     return session;
   }
 
-  removeSession(id) {
-    this.sessionArray.splice(id, 1);
+  addSessionView(session) {
+    let view = new Viewer(this, session);
+    session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
+    this.sessionViewArray.push(view);
+
+    document.getElementById("main").appendChild(view.base);
     this.updateUrlParams();
-    makeWorld(this);
+    return view;
   }
 
-  getDndProtocol(session, index) {
-    return JSON.stringify({ id: session.id, index: index });
+  onSessionUpdate(session) {
+    this.sessionViewArray[session.id].draw();
+    this.updateUrlParams();
   }
 
-  moveChar(srcProtocol, dstProtocol) {
-    const src = JSON.parse(srcProtocol);
-    const dst = JSON.parse(dstProtocol);
+  addSessionAndView(value, encoding) {
+    let session = this.addSession(value, encoding);
+    this.addSessionView(session);
+  }
 
-    const char = this.sessionArray[src.id].getCharAt(src.index);
-    this.sessionArray[src.id].delete(src.index);
-    this.sessionArray[dst.id].insert(dst.index, char);
+  removeSessionAndView(id) {
+    this.sessionArray.splice(id, 1);
+    let removedView = this.sessionViewArray.splice(id, 1)[0];
+
+    for (let newId = 0; newId < this.sessionArray.length; ++newId) {
+      this.sessionArray[newId].id = newId;
+    }
+
+    this.removeSessionView(removedView);
+    this.updateUrlParams();
+  }
+
+  removeSessionView(view) {
+    document.getElementById("main").removeChild(view.base);
+  }
+
+  initView() {
+    let main = document.getElementById("main");
+    main.innerHTML = "";
+
+    for (let session of this.sessionArray) {
+      this.addSessionView(session);
+    }
+    this.updateUrlParams();
   }
 
   getUrlParams() {
@@ -394,38 +419,46 @@ class SessionManager {
   }
 
   loadUrlParams(urlParams) {
-    let sessions = this.parseUrlParams(urlParams);
-    this.nextId = sessions.length;
-    this.sessionArray = sessions;
-    this.updateUrlParams();
+    this.sessionArray = [];
+    this.sessionViewArray = [];
+    this.addSessionsFromUrlParams(urlParams);
+    this.initView();
   }
 
-  parseUrlParams(urlParams) {
-    this.nextId = 0;
-    this.sessionArray = [];
-
+  addSessionsFromUrlParams(urlParams) {
     const params = new URLSearchParams(urlParams);
     const size = params.get("s") || 0;
 
     if (size == 0) {
-      let session = this.newSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
-      return [session];
+      this.addSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+      return;
     }
 
-    let sessions = [];
     for (let i = 0; i < size; ++i) {
       const text = params.get(`t${i}`);
       const encoding = params.get(`e${i}`);
       if (text && encoding) {
-        sessions.push(this.newSession(text, encoding));
+        this.addSession(text, encoding);
       }
     }
-    return sessions;
   }
 
   updateUrlParams() {
     const params = this.getUrlParams();
     history.replaceState("", "", location.pathname + "?" + params);
+  }
+
+  getDndProtocol(session, index) {
+    return JSON.stringify({ id: session.id, index: index });
+  }
+
+  moveChar(srcProtocol, dstProtocol) {
+    const src = JSON.parse(srcProtocol);
+    const dst = JSON.parse(dstProtocol);
+
+    const char = this.sessionArray[src.id].getCharAt(src.index);
+    this.sessionArray[src.id].delete(src.index);
+    this.sessionArray[dst.id].insert(dst.index, char);
   }
 }
 
@@ -473,7 +506,6 @@ class Viewer {
   constructor(sessionManager, session) {
     this.sessionManager = sessionManager;
     this.session = session;
-    this.session.setOnUpdateCallback(() => {this.draw()});
 
     this.base = document.createElement("div");
     this.base.innerHTML = (
@@ -491,7 +523,7 @@ class Viewer {
 
     let deleteSession = this.base.getElementsByClassName("delete-session")[0];
     deleteSession.addEventListener("click", (event) => {
-      this.sessionManager.removeSession(this.session.id);
+      this.sessionManager.removeSessionAndView(this.session.id);
     });
     // Delete button on mouse over
     showElementOnMouseMove(deleteSession, this.base);
@@ -561,8 +593,6 @@ class Viewer {
     const encoded = Encoder.encode(value, this.session.getEncoding());
     let encodedElement = this.base.getElementsByClassName("encoded")[0];
     encodedElement.innerText = encoded;
-
-    this.sessionManager.updateUrlParams();
   }
 
   setInputValue(value) {
@@ -647,30 +677,15 @@ class Viewer {
   }
 }
 
-function addViewer(viewer) {
-  document.getElementById("main").appendChild(viewer.base);
-}
-
-function makeWorld(sessionManager) {
-  let main = document.getElementById("main");
-  main.innerHTML = "";
-  for (let session of sessionManager.sessionArray) {
-    let viewer = new Viewer(sessionManager, session);
-    addViewer(viewer);
-  }
-}
-
 const params = new URLSearchParams(window.location.search);
 let sessionManager = new SessionManager();
 sessionManager.loadUrlParams(params);
-makeWorld(sessionManager);
 
 let addButton = document.createElement("input");
 addButton.type = "button";
 addButton.value = "Add";
 addButton.addEventListener("click", (event) => {
-  let session = sessionManager.newSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
-  addViewer(new Viewer(sessionManager, session));
+  sessionManager.addSessionAndView("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
 });
 document.body.appendChild(addButton);
     </script>
