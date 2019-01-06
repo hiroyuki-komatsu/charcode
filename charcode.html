@@ -381,10 +381,10 @@ class SessionManager {
     let view = document.createElement("session-view");
     view.setSession(session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
-    this.sessionViewArray.set(session.id, view);
+    this.sessionViewArray.set(session, view);
 
     view.addEventListener("delete-session", (event) => {
-      this.removeSessionAndView(event.detail.session.id);
+      this.removeSessionAndView(event.detail.session);
     });
 
     view.addEventListener("char-drag", (event) => {
@@ -404,7 +404,7 @@ class SessionManager {
   }
 
   onSessionUpdate(session) {
-    this.sessionViewArray.get(session.id).draw();
+    this.sessionViewArray.get(session).draw();
     this.updateUrlParams();
   }
 
@@ -413,10 +413,10 @@ class SessionManager {
     this.addSessionView(session);
   }
 
-  removeSessionAndView(id) {
-    const removedView = this.sessionViewArray.get(id);
-    this.sessionArray.delete(id);
-    this.sessionViewArray.delete(id);
+  removeSessionAndView(session) {
+    const removedView = this.sessionViewArray.get(session);
+    this.sessionArray.delete(session.id);
+    this.sessionViewArray.delete(session);
 
     this.removeSessionView(removedView);
     this.updateUrlParams();
