@@ -360,8 +360,9 @@ class Session {
 
 class SessionManager {
   constructor() {
-    this.sessionArray = [];
-    this.sessionViewArray = [];
+    this.nextId = 0;
+    this.sessionArray = new Map();
+    this.sessionViewArray = new Map();
 
     let addButton = document.getElementById("add");
     addButton.addEventListener("click", (event) => {
@@ -370,8 +371,9 @@ class SessionManager {
   }
 
   addSession(value, encoding) {
-    let session = new Session(this.sessionArray.length, value, encoding);
-    this.sessionArray.push(session);
+    let session = new Session(this.nextId, value, encoding);
+    this.sessionArray.set(this.nextId, session);
+    this.nextId++;
     return session;
   }
 
@@ -379,7 +381,7 @@ class SessionManager {
     let view = document.createElement("session-view");
     view.setSession(session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
-    this.sessionViewArray.push(view);
+    this.sessionViewArray.set(session.id, view);
 
     view.addEventListener("delete-session", (event) => {
       this.removeSessionAndView(event.detail.session.id);
@@ -402,7 +404,7 @@ class SessionManager {
   }
 
   onSessionUpdate(session) {
-    this.sessionViewArray[session.id].draw();
+    this.sessionViewArray.get(session.id).draw();
     this.updateUrlParams();
   }
 
@@ -412,12 +414,9 @@ class SessionManager {
   }
 
   removeSessionAndView(id) {
-    this.sessionArray.splice(id, 1);
-    let removedView = this.sessionViewArray.splice(id, 1)[0];
-
-    for (let newId = 0; newId < this.sessionArray.length; ++newId) {
-      this.sessionArray[newId].id = newId;
-    }
+    const removedView = this.sessionViewArray.get(id);
+    this.sessionArray.delete(id);
+    this.sessionViewArray.delete(id);
 
     this.removeSessionView(removedView);
     this.updateUrlParams();
@@ -431,27 +430,29 @@ class SessionManager {
     let main = document.getElementById("main");
     main.innerHTML = "";
 
-    for (let session of this.sessionArray) {
+    for (let session of this.sessionArray.values()) {
       this.addSessionView(session);
     }
     this.updateUrlParams();
   }
 
   getUrlParams() {
-    const size = this.sessionArray.length;
-    let params = [`s=${size}`];
-    for (let i = 0; i < size; ++i) {
-        const session = this.sessionArray[i];
-        const text = encodeURIComponent(session.getValue());
-        const encoding = encodeURIComponent(session.encoding);
-        params.push(`t${i}=${text}&e${i}=${encoding}`);
+    let i = 0;
+    let params = [];
+    for (let key of this.sessionArray.keys()) {
+      const session = this.sessionArray.get(key);
+      const text = encodeURIComponent(session.getValue());
+      const encoding = encodeURIComponent(session.encoding);
+      params.push(`t${i}=${text}&e${i}=${encoding}`);
+      i++;
     }
+    params.unshift(`s=${i}`);
     return params.join("&");
   }
 
   loadUrlParams(urlParams) {
-    this.sessionArray = [];
-    this.sessionViewArray = [];
+    this.sessionArray.clear();
+    this.sessionViewArray.clear();
     this.addSessionsFromUrlParams(urlParams);
     this.initView();
   }
@@ -487,9 +488,9 @@ class SessionManager {
     const src = JSON.parse(srcProtocol);
     const dst = JSON.parse(dstProtocol);
 
-    const char = this.sessionArray[src.id].getCharAt(src.index);
-    this.sessionArray[src.id].delete(src.index);
-    this.sessionArray[dst.id].insert(dst.index, char);
+    const char = this.sessionArray.get(src.id).getCharAt(src.index);
+    this.sessionArray.get(src.id).delete(src.index);
+    this.sessionArray.get(dst.id).insert(dst.index, char);
   }
 }
 
