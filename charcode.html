@@ -361,8 +361,9 @@ class Session {
 class SessionManager {
   constructor() {
     this.nextId = 0;
-    this.sessionArray = new Map();
-    this.sessionViewArray = new Map();
+    this.sessionArray = new Map();  // Key: ID
+    this.sessionViewArray = new Map();  // Key: session
+    this.dragData = {};
 
     let addButton = document.getElementById("add");
     addButton.addEventListener("click", (event) => {
@@ -388,14 +389,12 @@ class SessionManager {
     });
 
     view.addEventListener("char-drag", (event) => {
-      const protocol = this.getDndProtocol(event.detail.session, event.detail.index);
-      event.detail.event.dataTransfer.setData("text/plain", protocol);
+      this.dragData = { session: event.detail.session, index: event.detail.index };
     });
 
     view.addEventListener("char-drop", (event) => {
-      const srcProtocol = event.detail.event.dataTransfer.getData("text/plain");
-      const dstProtocol = this.getDndProtocol(event.detail.session, event.detail.index);
-      this.moveChar(srcProtocol, dstProtocol);
+      const dropData = { session: event.detail.session, index: event.detail.index };
+      this.moveChar(this.dragData, dropData);
     });
 
     document.getElementById("main").appendChild(view);
@@ -480,17 +479,10 @@ class SessionManager {
     history.replaceState("", "", location.pathname + "?" + params);
   }
 
-  getDndProtocol(session, index) {
-    return JSON.stringify({ id: session.id, index: index });
-  }
-
-  moveChar(srcProtocol, dstProtocol) {
-    const src = JSON.parse(srcProtocol);
-    const dst = JSON.parse(dstProtocol);
-
-    const char = this.sessionArray.get(src.id).getCharAt(src.index);
-    this.sessionArray.get(src.id).delete(src.index);
-    this.sessionArray.get(dst.id).insert(dst.index, char);
+  moveChar(dragData, dropData) {
+    const char = dragData.session.getCharAt(dragData.index);
+    dragData.session.delete(dragData.index);
+    dropData.session.insert(dropData.index, char);
   }
 }
 
