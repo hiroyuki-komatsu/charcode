@@ -137,7 +137,9 @@ session-view {
   </head>
   <body>
     <div id="main"></div>
-    <script>
+    <input type="button" id="add" value="Add"></input>
+
+<script>
 function getHex(number, size=4) {
   let hex = number.toString(16).toUpperCase();
   if (hex.length >= size) {
@@ -360,6 +362,11 @@ class SessionManager {
   constructor() {
     this.sessionArray = [];
     this.sessionViewArray = [];
+
+    let addButton = document.getElementById("add");
+    addButton.addEventListener("click", (event) => {
+      this.addSessionAndView("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+    });
   }
 
   addSession(value, encoding) {
@@ -515,7 +522,6 @@ function showElementOnMouseMove(targetElement, hostElement) {
   });
 }
 
-// TODO: make this a custom element and dispatch delete, drag and drop events.
 customElements.define("session-view", class extends HTMLElement {
   constructor() {
     super();
@@ -690,14 +696,6 @@ customElements.define("session-view", class extends HTMLElement {
 const params = new URLSearchParams(window.location.search);
 let sessionManager = new SessionManager();
 sessionManager.loadUrlParams(params);
-
-let addButton = document.createElement("input");
-addButton.type = "button";
-addButton.value = "Add";
-addButton.addEventListener("click", (event) => {
-  sessionManager.addSessionAndView("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
-});
-document.body.appendChild(addButton);
     </script>
   </body>
 </html>
