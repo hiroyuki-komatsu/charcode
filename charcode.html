@@ -283,8 +283,7 @@ class Encoder {
 }
 
 class Session {
-  constructor(id, value, encoding) {
-    this.id = id;
+  constructor(value, encoding) {
     this.prevValue = value;
     this.chars = Session.parse(value);
     this.prevEncoding = encoding;
@@ -358,34 +357,52 @@ class Session {
   }
 }
 
+class SessionArray {
+  constructor() {
+    this.sessionArray = [];
+  }
+
+  clear() {
+    this.sessionArray = [];
+  }
+
+  addSession(value, encoding) {
+    const session = new Session(value, encoding);
+    this.sessionArray.push(session);
+    return session;
+  }
+
+  removeSession(session) {
+    this.sessionArray.splice(this.sessionArray.indexOf(session), 1);
+  }
+
+  getSessions() {
+    return this.sessionArray;
+  }
+}
+
 class SessionManager {
   constructor() {
-    this.nextId = 0;
-    this.sessionArray = [];
+    this.sessionArray = new SessionArray();
     this.sessionViewMap = new Map();  // Key: session
     this.dragData = {};
 
     let addButton = document.getElementById("add");
     addButton.addEventListener("click", (event) => {
-      this.addSessionAndView("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+      this.addSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
     });
   }
 
   addSession(value, encoding) {
-    let session = new Session(this.nextId, value, encoding);
-    this.sessionArray.push(session);
-    this.nextId++;
-    return session;
-  }
+    let session = this.sessionArray.addSession(value, encoding);
 
-  addSessionView(session) {
     let view = document.createElement("session-view");
     view.setSession(session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
     this.sessionViewMap.set(session, view);
 
     view.addEventListener("delete-session", (event) => {
-      this.removeSessionAndView(event.detail.session);
+      this.removeSession(event.detail.session);
     });
 
     view.addEventListener("char-drag", (event) => {
@@ -407,38 +424,19 @@ class SessionManager {
     this.updateUrlParams();
   }
 
-  addSessionAndView(value, encoding) {
-    let session = this.addSession(value, encoding);
-    this.addSessionView(session);
-  }
-
-  removeSessionAndView(session) {
+  removeSession(session) {
+    this.sessionArray.removeSession(session);
     const removedView = this.sessionViewMap.get(session);
-    this.sessionArray.splice(this.sessionArray.indexOf(session), 1);
     this.sessionViewMap.delete(session);
 
-    this.removeSessionView(removedView);
-    this.updateUrlParams();
-  }
-
-  removeSessionView(view) {
-    document.getElementById("main").removeChild(view);
-  }
-
-  initView() {
-    let main = document.getElementById("main");
-    main.innerHTML = "";
-
-    for (let session of this.sessionArray) {
-      this.addSessionView(session);
-    }
+    document.getElementById("main").removeChild(removedView);
     this.updateUrlParams();
   }
 
   getUrlParams() {
     let i = 0;
     let params = [];
-    for (let session of this.sessionArray) {
+    for (let session of this.sessionArray.getSessions()) {
       const text = encodeURIComponent(session.getValue());
       const encoding = encodeURIComponent(session.encoding);
       params.push(`t${i}=${text}&e${i}=${encoding}`);
@@ -449,10 +447,9 @@ class SessionManager {
   }
 
   loadUrlParams(urlParams) {
-    this.sessionArray = [];
+    this.sessionArray.clear();
     this.sessionViewMap.clear();
     this.addSessionsFromUrlParams(urlParams);
-    this.initView();
   }
 
   addSessionsFromUrlParams(urlParams) {
