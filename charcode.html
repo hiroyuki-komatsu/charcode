@@ -369,11 +369,25 @@ class SessionManager {
   }
 
   addSessionView(session) {
-    // let view = new Viewer(this, session);
     let view = document.createElement("session-view");
-    view.setValues(this, session);
+    view.setSession(session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
     this.sessionViewArray.push(view);
+
+    view.addEventListener("delete-session", (event) => {
+      this.removeSessionAndView(event.detail.session.id);
+    });
+
+    view.addEventListener("char-drag", (event) => {
+      const protocol = this.getDndProtocol(event.detail.session, event.detail.index);
+      event.detail.event.dataTransfer.setData("text/plain", protocol);
+    });
+
+    view.addEventListener("char-drop", (event) => {
+      const srcProtocol = event.detail.event.dataTransfer.getData("text/plain");
+      const dstProtocol = this.getDndProtocol(event.detail.session, event.detail.index);
+      this.moveChar(srcProtocol, dstProtocol);
+    });
 
     document.getElementById("main").appendChild(view);
     this.updateUrlParams();
@@ -507,8 +521,7 @@ customElements.define("session-view", class extends HTMLElement {
     super();
   }
 
-  setValues(sessionManager, session) {
-    this.sessionManager = sessionManager;
+  setSession(session) {
     this.session = session;
 
     this.innerHTML = (
@@ -525,11 +538,12 @@ customElements.define("session-view", class extends HTMLElement {
       `<hr />`);
 
     let deleteSession = this.getElementsByClassName("delete-session")[0];
-    deleteSession.addEventListener("click", (event) => {
-      this.sessionManager.removeSessionAndView(this.session.id);
+    deleteSession.addEventListener("click", (e) => {
+      const event = new CustomEvent("delete-session", { detail: {session: session }});
+      this.dispatchEvent(event);
     });
     // Delete button on mouse over
-    // showElementOnMouseMove(deleteSession, this);
+    showElementOnMouseMove(deleteSession, this);
 
     this.output = this.getElementsByClassName("output")[0];
 
@@ -603,17 +617,6 @@ customElements.define("session-view", class extends HTMLElement {
     this.textField.value = Encoder.encode(value, encoding);
   }
 
-  onDrag(event, index) {
-    const protocol = this.sessionManager.getDndProtocol(this.session, index);
-    event.dataTransfer.setData("text/plain", protocol);
-  }
-
-  onDrop(event, index) {
-    const srcProtocol = event.dataTransfer.getData("text/plain");
-    const dstProtocol = this.sessionManager.getDndProtocol(this.session, index);
-    this.sessionManager.moveChar(srcProtocol, dstProtocol);
-  }
-
   createCharElement(index) {
     let charElement = document.createElement("div");
     charElement.className = "char";
@@ -652,18 +655,22 @@ customElements.define("session-view", class extends HTMLElement {
     showElementOnMouseMove(deleteElement, charElement);
 
     // Drag and Drop
-    charElement.addEventListener("dragstart", () => {
+    charElement.addEventListener("dragstart", (event) => {
       deleteElement.style.display = "none";
-      this.onDrag(event, index);
+
+      const dragEvent = new CustomEvent("char-drag", { detail: { event: event, session: this.session, index: index }});
+      this.dispatchEvent(dragEvent);
     });
 
-    charElement.addEventListener("dragover", () => {
+    charElement.addEventListener("dragover", (event) => {
       event.preventDefault();
     });
 
-    charElement.addEventListener("drop", () => {
+    charElement.addEventListener("drop", (event) => {
       event.preventDefault();
-      this.onDrop(event, index);
+
+      const dragEvent = new CustomEvent("char-drop", { detail: { event: event, session: this.session, index: index }});
+      this.dispatchEvent(dragEvent);
     });
 
     return charElement;
