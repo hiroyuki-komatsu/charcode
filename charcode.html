@@ -113,7 +113,9 @@ input[type="button"] {
 }
 
 .delete-session {
-  float: right;
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
   border: 0px;
   color: #666;
   font-size: 16px;
@@ -462,17 +464,6 @@ class SessionManager {
   }
 }
 
-function createEncodingSelectElement() {
-  let element = document.createElement("select");
-  element.className = "encode";
-  let optionsHtml = "";
-  for (let encoding of Encoder.getEncodings()) {
-    optionsHtml += `<option value="${encoding}">${Encoder.getLabel(encoding)}</option>`;
-  }
-  element.innerHTML = optionsHtml;
-  return element;
-}
-
 customElements.define("encoding-select", class extends HTMLElement {
   constructor() {
     super();
@@ -502,6 +493,7 @@ function showElementOnMouseMove(targetElement, hostElement) {
   });
 }
 
+// TODO: make this a custom element and dispatch delete, drag and drop events.
 class Viewer {
   constructor(sessionManager, session) {
     this.sessionManager = sessionManager;
