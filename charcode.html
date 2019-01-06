@@ -112,10 +112,16 @@ input[type="button"] {
   font-size: 10px;
 }
 
+session-view {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
 .delete-session {
   position: absolute;
-  top: 0.5em;
-  right: 0.5em;
+  top: 0;
+  right: 0;
   border: 0px;
   color: #666;
   font-size: 16px;
@@ -363,11 +369,13 @@ class SessionManager {
   }
 
   addSessionView(session) {
-    let view = new Viewer(this, session);
+    // let view = new Viewer(this, session);
+    let view = document.createElement("session-view");
+    view.setValues(this, session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
     this.sessionViewArray.push(view);
 
-    document.getElementById("main").appendChild(view.base);
+    document.getElementById("main").appendChild(view);
     this.updateUrlParams();
     return view;
   }
@@ -395,7 +403,7 @@ class SessionManager {
   }
 
   removeSessionView(view) {
-    document.getElementById("main").removeChild(view.base);
+    document.getElementById("main").removeChild(view);
   }
 
   initView() {
@@ -494,13 +502,16 @@ function showElementOnMouseMove(targetElement, hostElement) {
 }
 
 // TODO: make this a custom element and dispatch delete, drag and drop events.
-class Viewer {
-  constructor(sessionManager, session) {
+customElements.define("session-view", class extends HTMLElement {
+  constructor() {
+    super();
+  }
+
+  setValues(sessionManager, session) {
     this.sessionManager = sessionManager;
     this.session = session;
 
-    this.base = document.createElement("div");
-    this.base.innerHTML = (
+    this.innerHTML = (
       `<button class="delete-session" title="Delete this session.">✗</button>`+
       `<p>` +
       `<encoding-select></encoding-select>` +
@@ -513,16 +524,16 @@ class Viewer {
       `<div class="output"></div>` +
       `<hr />`);
 
-    let deleteSession = this.base.getElementsByClassName("delete-session")[0];
+    let deleteSession = this.getElementsByClassName("delete-session")[0];
     deleteSession.addEventListener("click", (event) => {
       this.sessionManager.removeSessionAndView(this.session.id);
     });
     // Delete button on mouse over
-    showElementOnMouseMove(deleteSession, this.base);
+    // showElementOnMouseMove(deleteSession, this);
 
-    this.output = this.base.getElementsByClassName("output")[0];
+    this.output = this.getElementsByClassName("output")[0];
 
-    let encodingSelectElements = this.base.getElementsByTagName("encoding-select");
+    let encodingSelectElements = this.getElementsByTagName("encoding-select");
     this.inputSelect = encodingSelectElements[0].selectElement();
     // inputSelect.value = "text";
     this.inputSelect.addEventListener("change", (event) => {
@@ -531,7 +542,7 @@ class Viewer {
     });
 
     // Text field
-    this.textField = this.base.getElementsByClassName("text")[0];
+    this.textField = this.getElementsByClassName("text")[0];
 
     this.textField.addEventListener("input", (event) => {
       const willUpdateSession = (this.inputSelect.value == "text");
@@ -546,7 +557,7 @@ class Viewer {
       this.updateTextField(willUpdateSession);
     });
 
-    let selector = this.base.getElementsByTagName("encoding-select")[1].selectElement();
+    let selector = this.getElementsByTagName("encoding-select")[1].selectElement();
     selector.value = session.getEncoding();
     selector.addEventListener("change", (event) => {
       this.session.setEncoding(event.target.value);
@@ -583,7 +594,7 @@ class Viewer {
     this.output.appendChild(this.createPlusElement(value.length));
 
     const encoded = Encoder.encode(value, this.session.getEncoding());
-    let encodedElement = this.base.getElementsByClassName("encoded")[0];
+    let encodedElement = this.getElementsByClassName("encoded")[0];
     encodedElement.innerText = encoded;
   }
 
@@ -667,7 +678,7 @@ class Viewer {
     });
     return plus;
   }
-}
+});
 
 const params = new URLSearchParams(window.location.search);
 let sessionManager = new SessionManager();
