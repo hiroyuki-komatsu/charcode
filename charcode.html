@@ -361,8 +361,8 @@ class Session {
 class SessionManager {
   constructor() {
     this.nextId = 0;
-    this.sessionArray = new Map();  // Key: ID
-    this.sessionViewArray = new Map();  // Key: session
+    this.sessionArray = [];
+    this.sessionViewMap = new Map();  // Key: session
     this.dragData = {};
 
     let addButton = document.getElementById("add");
@@ -373,7 +373,7 @@ class SessionManager {
 
   addSession(value, encoding) {
     let session = new Session(this.nextId, value, encoding);
-    this.sessionArray.set(this.nextId, session);
+    this.sessionArray.push(session);
     this.nextId++;
     return session;
   }
@@ -382,7 +382,7 @@ class SessionManager {
     let view = document.createElement("session-view");
     view.setSession(session);
     session.setOnUpdateCallback(() => { this.onSessionUpdate(session); });
-    this.sessionViewArray.set(session, view);
+    this.sessionViewMap.set(session, view);
 
     view.addEventListener("delete-session", (event) => {
       this.removeSessionAndView(event.detail.session);
@@ -403,7 +403,7 @@ class SessionManager {
   }
 
   onSessionUpdate(session) {
-    this.sessionViewArray.get(session).draw();
+    this.sessionViewMap.get(session).draw();
     this.updateUrlParams();
   }
 
@@ -413,9 +413,9 @@ class SessionManager {
   }
 
   removeSessionAndView(session) {
-    const removedView = this.sessionViewArray.get(session);
-    this.sessionArray.delete(session.id);
-    this.sessionViewArray.delete(session);
+    const removedView = this.sessionViewMap.get(session);
+    this.sessionArray.splice(this.sessionArray.indexOf(session), 1);
+    this.sessionViewMap.delete(session);
 
     this.removeSessionView(removedView);
     this.updateUrlParams();
@@ -429,7 +429,7 @@ class SessionManager {
     let main = document.getElementById("main");
     main.innerHTML = "";
 
-    for (let session of this.sessionArray.values()) {
+    for (let session of this.sessionArray) {
       this.addSessionView(session);
     }
     this.updateUrlParams();
@@ -438,8 +438,7 @@ class SessionManager {
   getUrlParams() {
     let i = 0;
     let params = [];
-    for (let key of this.sessionArray.keys()) {
-      const session = this.sessionArray.get(key);
+    for (let session of this.sessionArray) {
       const text = encodeURIComponent(session.getValue());
       const encoding = encodeURIComponent(session.encoding);
       params.push(`t${i}=${text}&e${i}=${encoding}`);
@@ -450,8 +449,8 @@ class SessionManager {
   }
 
   loadUrlParams(urlParams) {
-    this.sessionArray.clear();
-    this.sessionViewArray.clear();
+    this.sessionArray = [];
+    this.sessionViewMap.clear();
     this.addSessionsFromUrlParams(urlParams);
     this.initView();
   }
