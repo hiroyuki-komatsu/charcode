@@ -182,14 +182,20 @@ class Encoder {
         decoded = dom.body.textContent;
         break;
       case "utf32-u":
-        decoded = eval('"' + value.replace(/"/g, '\\"') + '"');
+      　decoded = value.replace(/\\\\/g, "\\u{5C}");
+        decoded = decoded.replace(/\\u\{([a-fA-F0-9]+)\}/g, (m, m1) => {
+          return String.fromCodePoint(parseInt(m1, 16));
+        });
         break;
       case "utf16-u":
-        decoded = JSON.parse('"' + value.replace(/"/g, '\\"') + '"');
+      　decoded = value.replace(/\\\\/g, "\\u5C");
+        decoded = decoded.replace(/\\u([a-fA-F0-9]+)/g, (m, m1) => {
+          return String.fromCharCode(parseInt(m1, 16));
+        });
         break;
       case "utf8-x":
-        const escaped = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
-        decoded = decodeURIComponent(escaped.replace(/\\x/g, "%"));
+        decoded = value.replace(/%/g, "%25").replace(/\\\\/g, "%5C");
+        decoded = decodeURIComponent(decoded.replace(/\\x/g, "%"));
         break;
       case "utf8-pct":
         decoded = decodeURIComponent(value);
@@ -433,6 +439,11 @@ class SessionManager {
     this.updateUrlParams();
   }
 
+  updateUrlParams() {
+    const params = this.getUrlParams();
+    history.replaceState("", "", location.pathname + "?" + params);
+  }
+
   getUrlParams() {
     let i = 0;
     let params = [];
@@ -449,10 +460,7 @@ class SessionManager {
   loadUrlParams(urlParams) {
     this.sessionArray.clear();
     this.sessionViewMap.clear();
-    this.addSessionsFromUrlParams(urlParams);
-  }
 
-  addSessionsFromUrlParams(urlParams) {
     const params = new URLSearchParams(urlParams);
     const size = params.get("s") || 0;
 
@@ -468,11 +476,6 @@ class SessionManager {
         this.addSession(text, encoding);
       }
     }
-  }
-
-  updateUrlParams() {
-    const params = this.getUrlParams();
-    history.replaceState("", "", location.pathname + "?" + params);
   }
 
   moveChar(dragData, dropData) {
@@ -671,6 +674,7 @@ customElements.define("session-view", class extends HTMLElement {
     return charElement;
   }
 
+  // TODO: enable plus element drag and drop.
   createPlusElement(index) {
     let plus = document.createElement("div");
     plus.className = "plus";
