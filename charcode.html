@@ -13,7 +13,6 @@ hr {
 select {
   background-color: transparent;
   border: 0px;
-  /* height: 34px; */
   margin-right: 2em;
   outline: none;
 }
@@ -46,12 +45,16 @@ input[type="button"] {
   background-color: pink;
 }
 
+.encoded-focused {
+  color: red;
+}
+
 .char {
   display: inline-block;
   width: 70px;
   height: 100px;
   vertical-align: top;
-  margin: 2px;
+  margin: 0px;
   margin-top: 10px;
   padding: 3px;
   padding-top: 10px;
@@ -321,6 +324,10 @@ class Session {
     return this.chars.join("");
   }
 
+  getSubValue(start, end) {
+    return this.chars.slice(start, end).join("");
+  }
+
   setEncoding(encoding) {
     this.encoding = encoding;
     this.onUpdate();
@@ -517,6 +524,7 @@ function showElementOnMouseMove(targetElement, hostElement) {
 customElements.define("session-view", class extends HTMLElement {
   constructor() {
     super();
+    this.focused = null;
   }
 
   setSession(session) {
@@ -530,7 +538,9 @@ customElements.define("session-view", class extends HTMLElement {
       `</p>` +
       `<p>` +
       `<encoding-select></encoding-select>` +
-      `<span class="encoded"></span>` +
+      `<span class="encoded-left"></span>` +
+      `<span class="encoded-focused"></span>` +
+      `<span class="encoded-right"></span>` +
       `</p>` +
       `<div class="output"></div>` +
       `<hr />`);
@@ -605,9 +615,21 @@ customElements.define("session-view", class extends HTMLElement {
     }
     this.output.appendChild(this.createPlusElement(value.length));
 
-    const encoded = Encoder.encode(value, this.session.getEncoding());
-    let encodedElement = this.getElementsByClassName("encoded")[0];
-    encodedElement.innerText = encoded;
+    const encoding = this.session.getEncoding();
+    let encoded = [];
+    if (this.focused == null) {
+      encoded.push(Encoder.encode(value, encoding), "", "");
+    } else {
+      const textLeft = this.session.getSubValue(0, this.focused);
+      const textFocused = this.session.getSubValue(this.focused, this.focused + 1);
+      const textRight = this.session.getSubValue(this.focused + 1, this.session.getLength());
+      encoded.push(Encoder.encode(textLeft, encoding));
+      encoded.push(Encoder.encode(textFocused, encoding));
+      encoded.push(Encoder.encode(textRight, encoding));
+    }
+    this.getElementsByClassName("encoded-left")[0].innerText = encoded[0];
+    this.getElementsByClassName("encoded-focused")[0].innerText = encoded[1];
+    this.getElementsByClassName("encoded-right")[0].innerText = encoded[2];
   }
 
   setInputValue(value) {
@@ -669,6 +691,22 @@ customElements.define("session-view", class extends HTMLElement {
 
       const dragEvent = new CustomEvent("char-drop", { detail: { event: event, session: this.session, index: index }});
       this.dispatchEvent(dragEvent);
+    });
+
+    // Focus
+    charElement.addEventListener("mouseover", () => {
+      if (this.focused == index) {
+        return;
+      }
+      this.focused = index;
+      this.draw();
+    });
+    charElement.addEventListener("mouseleave", () => {
+      if (this.focused == null) {
+        return;
+      }
+      this.focused = null;
+      // this.draw();
     });
 
     return charElement;
