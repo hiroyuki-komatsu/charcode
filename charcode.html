@@ -63,9 +63,6 @@ input[type="button"] {
   position: relative;
   box-shadow: 1px 1px 1px lightgrey;
 }
-.char:hover {
-  box-shadow: 1px 1px 1px lightgrey;
-}
 .char input {
   outline: none;
   border: 0px;
@@ -502,8 +499,11 @@ class SessionManager {
   }
 
   moveChar(dragData, dropData) {
-    const char = dragData.session.getCharAt(dragData.index);
-    dragData.session.delete(dragData.index);
+    let char = " ";
+    if (dragData.index < dragData.session.getLength()) {
+      char = dragData.session.getCharAt(dragData.index);
+      dragData.session.delete(dragData.index);
+    }
     dropData.session.insert(dropData.index, char);
   }
 }
@@ -649,7 +649,6 @@ customElements.define("session-view", class extends HTMLElement {
   createCharElement(index) {
     let charElement = document.createElement("div");
     charElement.className = "char";
-    charElement.draggable = true;
     const codePoint = this.session.getCodePointAt(index);
     const utf8String = Encoder.encodeUtf8(this.session.getCharAt(index), "", "", " ");
     const utf16String = Encoder.encodeUtf16(this.session.getCharAt(index), "", "", " ");
@@ -680,23 +679,9 @@ customElements.define("session-view", class extends HTMLElement {
     })
 
     // Drag and Drop
+    this.enableDragAndDrop(charElement, index);
     charElement.addEventListener("dragstart", (event) => {
       deleteElement.style.display = "none";
-
-      const dragEvent = new CustomEvent("char-drag", { detail: { event: event, session: this.session, index: index }});
-      this.dispatchEvent(dragEvent);
-    });
-
-    charElement.addEventListener("dragover", (event) => {
-      event.preventDefault();
-    });
-
-    charElement.addEventListener("drop", (event) => {
-      event.preventDefault();
-      this.isDropped = true;
-      this.focused = index;
-      const dragEvent = new CustomEvent("char-drop", { detail: { event: event, session: this.session, index: index }});
-      this.dispatchEvent(dragEvent);
     });
 
     // Focus
@@ -728,7 +713,6 @@ customElements.define("session-view", class extends HTMLElement {
     return charElement;
   }
 
-  // TODO: enable plus element drag and drop.
   createPlusElement(index) {
     let plus = document.createElement("div");
     plus.className = "plus";
@@ -736,7 +720,26 @@ customElements.define("session-view", class extends HTMLElement {
     plus.addEventListener("click", () => {
       this.session.insert(index, " ");
     });
+    this.enableDragAndDrop(plus, index);
     return plus;
+  }
+
+  enableDragAndDrop(element, index) {
+    element.draggable = true;
+    element.addEventListener("dragstart", (event) => {
+      const dragEvent = new CustomEvent("char-drag", { detail: { event: event, session: this.session, index: index }});
+      this.dispatchEvent(dragEvent);
+    });
+    element.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+    element.addEventListener("drop", (event) => {
+      event.preventDefault();
+      this.isDropped = true;
+      this.focused = index;
+      const dropEvent = new CustomEvent("char-drop", { detail: { event: event, session: this.session, index: index }});
+      this.dispatchEvent(dropEvent);
+    });
   }
 });
 
