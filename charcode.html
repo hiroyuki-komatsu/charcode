@@ -536,6 +536,7 @@ customElements.define("session-view", class extends HTMLElement {
     super();
     this.focused = null;
     this.isDropped = false;  // true on drop event until the next mouseenter event.
+    this.prevValue = null;
   }
 
   setSession(session) {
@@ -617,12 +618,15 @@ customElements.define("session-view", class extends HTMLElement {
   draw() {
     const value = this.session.getValue();
     this.setInputValue(value);
-    this.output.innerHTML = "";
 
-    for (let i = 0; i < this.session.getLength(); ++i) {
-      this.output.appendChild(this.createCharElement(i));
+    if (this.prevValue != value) {
+      this.output.innerHTML = "";
+      for (let i = 0; i < this.session.getLength(); ++i) {
+        this.output.appendChild(this.createCharElement(i));
+      }
+      this.output.appendChild(this.createPlusElement(value.length));
+      this.prevValue = value;
     }
-    this.output.appendChild(this.createPlusElement(value.length));
 
     const encoding = this.session.getEncoding();
     let encoded = [];
