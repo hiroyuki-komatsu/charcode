@@ -75,12 +75,16 @@ input[type="button"] {
 }
 
 .char .delete {
+  display: none;
   position: absolute;
   right: -2px;
   top: -2px;
   cursor: pointer;
   width: 20px;
   height: 20px;
+}
+.char:hover .delete {
+  display: block;
 }
 
 .plus {
@@ -114,6 +118,7 @@ session-view {
 }
 
 .delete-session {
+  display: none;
   position: absolute;
   top: 0;
   right: 0;
@@ -125,6 +130,9 @@ session-view {
   border: 2px solid;
   border-color: transparent;
   border-radius: 50%;
+}
+session-view:hover .delete-session {
+  display: block;
 }
 .delete-session:hover {
   border-color: #aaf;
@@ -523,16 +531,6 @@ customElements.define("encoding-select", class extends HTMLElement {
   }
 });
 
-function showElementOnMouseMove(targetElement, hostElement) {
-  targetElement.style.display = "none";
-  hostElement.addEventListener("mouseover", () => {
-    targetElement.style.display = "";
-  });
-  hostElement.addEventListener("mouseleave", () => {
-    targetElement.style.display = "none";
-  });
-}
-
 customElements.define("session-view", class extends HTMLElement {
   constructor() {
     super();
@@ -563,8 +561,6 @@ customElements.define("session-view", class extends HTMLElement {
       const event = new CustomEvent("delete-session", { detail: {session: session }});
       this.dispatchEvent(event);
     });
-    // Delete button on mouse over
-    showElementOnMouseMove(deleteSession, this);
 
     this.output = this.getElementsByClassName("output")[0];
 
@@ -679,13 +675,9 @@ customElements.define("session-view", class extends HTMLElement {
     });
 
     let deleteElement = charElement.getElementsByClassName("delete")[0];
-    deleteElement.style.display = "none";
     deleteElement.addEventListener("click", () => {
       this.session.delete(index);
     })
-
-    // Delete button on mouse over
-    showElementOnMouseMove(deleteElement, charElement);
 
     // Drag and Drop
     charElement.addEventListener("dragstart", (event) => {
