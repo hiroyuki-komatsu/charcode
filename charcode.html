@@ -694,10 +694,11 @@ customElements.define("session-view", class extends HTMLElement {
     });
 
     // Focus
-    charElement.addEventListener("mouseover", () => {
+    charElement.addEventListener("mouseenter", () => {
       if (this.focused == index) {
         return;
       }
+      clearTimeout(this.delayedUnfocus);
       this.focused = index;
       this.draw();
     });
@@ -705,8 +706,10 @@ customElements.define("session-view", class extends HTMLElement {
       if (this.focused == null) {
         return;
       }
-      this.focused = null;
-      // this.draw();
+      this.delayedUnfocus = setTimeout(() => {
+        this.focused = null;
+        this.draw();
+      }, 100);
     });
 
     return charElement;
