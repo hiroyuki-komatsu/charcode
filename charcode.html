@@ -525,6 +525,7 @@ customElements.define("session-view", class extends HTMLElement {
   constructor() {
     super();
     this.focused = null;
+    this.isDropped = false;  // true on drop event until the next mouseenter event.
   }
 
   setSession(session) {
@@ -688,13 +689,21 @@ customElements.define("session-view", class extends HTMLElement {
 
     charElement.addEventListener("drop", (event) => {
       event.preventDefault();
-
+      this.isDropped = true;
+      this.focused = index;
       const dragEvent = new CustomEvent("char-drop", { detail: { event: event, session: this.session, index: index }});
       this.dispatchEvent(dragEvent);
     });
 
     // Focus
     charElement.addEventListener("mouseenter", () => {
+      if (this.isDropped) {
+        // Skip handling this event just after drop event.
+        // This event comes from the element located in the dragging point,
+        // but not the dropped point. This behavior would be a bug in somewhere.
+        this.isDropped = false;
+        return;
+      }
       if (this.focused == index) {
         return;
       }
