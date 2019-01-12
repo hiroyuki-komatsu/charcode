@@ -25,6 +25,10 @@ input[type="button"] {
   height: 34px;
 }
 
+.input, .output {
+  margin: 0.3em;
+}
+
 .text {
   border: 0px;
   border-bottom: 3px solid #aaa;
@@ -32,12 +36,10 @@ input[type="button"] {
   height: 50px;
   font-size: 40px;
 }
-
 .text:focus {
   outline: none;
   border-bottom: 3px solid #aaf;
 }
-
 .text.modified {
   background-color: lightyellow;
 }
@@ -61,11 +63,9 @@ input[type="button"] {
   position: relative;
   box-shadow: 1px 1px 1px lightgrey;
 }
-
 .char:hover {
   box-shadow: 1px 1px 1px lightgrey;
 }
-
 .char input {
   outline: none;
   border: 0px;
@@ -73,7 +73,6 @@ input[type="button"] {
   font-size: 16px;
   width: 100%;
 }
-
 .char .delete {
   display: none;
   position: absolute;
@@ -133,9 +132,6 @@ session-view {
 }
 session-view:hover .delete-session {
   display: block;
-}
-.delete-session:hover {
-  border-color: #aaf;
 }
 
 .xmark::before,
@@ -544,17 +540,17 @@ customElements.define("session-view", class extends HTMLElement {
 
     this.innerHTML = (
       `<button class="delete-session xmark" title="Delete this session."></button>`+
-      `<p>` +
+      `<div class="input">` +
       `<encoding-select></encoding-select>` +
       `<input type="text" class="text"></input><br/>` +
-      `</p>` +
-      `<p>` +
+      `</div>` +
+      `<div class="output">` +
       `<encoding-select></encoding-select>` +
       `<span class="encoded-left"></span>` +
       `<span class="encoded-focused"></span>` +
       `<span class="encoded-right"></span>` +
-      `</p>` +
-      `<div class="output"></div>` +
+      `</div>` +
+      `<div class="chars"></div>` +
       `<hr />`);
 
     let deleteSession = this.getElementsByClassName("delete-session")[0];
@@ -563,7 +559,7 @@ customElements.define("session-view", class extends HTMLElement {
       this.dispatchEvent(event);
     });
 
-    this.output = this.getElementsByClassName("output")[0];
+    this.chars = this.getElementsByClassName("chars")[0];
 
     let encodingSelectElements = this.getElementsByTagName("encoding-select");
     this.inputSelect = encodingSelectElements[0].selectElement();
@@ -620,11 +616,11 @@ customElements.define("session-view", class extends HTMLElement {
     this.setInputValue(value);
 
     if (this.prevValue != value) {
-      this.output.innerHTML = "";
+      this.chars.innerHTML = "";
       for (let i = 0; i < this.session.getLength(); ++i) {
-        this.output.appendChild(this.createCharElement(i));
+        this.chars.appendChild(this.createCharElement(i));
       }
-      this.output.appendChild(this.createPlusElement(value.length));
+      this.chars.appendChild(this.createPlusElement(value.length));
       this.prevValue = value;
     }
 
