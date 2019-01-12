@@ -76,19 +76,11 @@ input[type="button"] {
 
 .char .delete {
   position: absolute;
-  right: -7px;
-  top: -7px;
+  right: -2px;
+  top: -2px;
   cursor: pointer;
-  color: #fff;
-  border: 1px solid #AEAEAE;
-  border-radius: 10px;
   width: 20px;
   height: 20px;
-  background: #605F61;
-  font-size: 20px;
-  text-align: center;
-  line-height: 19px;
-  font-weight: bold;
 }
 
 .plus {
@@ -125,16 +117,36 @@ session-view {
   position: absolute;
   top: 0;
   right: 0;
-  border: 0px;
-  color: #666;
-  font-size: 16px;
-  width: 2em;
-  height: 2em;
+  background-color: transparent;
+  width: 3em;
+  height: 3em;
   outline: none;
+  cursor: pointer;
+  border: 2px solid;
+  border-color: transparent;
+  border-radius: 50%;
 }
 .delete-session:hover {
-  border: 2px solid #aaf;
-  border-radius: 50%;
+  border-color: #aaf;
+}
+
+.xmark::before,
+.xmark::after {
+  display: block;
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  height: 14%;
+  margin: -7% 0 0 -35%;  /* -h/2 0 0 -w/2 */
+  background: #666;
+}
+.xmark::before {
+  transform: rotate(-45deg);
+}
+.xmark::after {
+  transform: rotate(45deg);
 }
     </style>
   </head>
@@ -532,7 +544,7 @@ customElements.define("session-view", class extends HTMLElement {
     this.session = session;
 
     this.innerHTML = (
-      `<button class="delete-session" title="Delete this session.">✗</button>`+
+      `<button class="delete-session xmark" title="Delete this session."></button>`+
       `<p>` +
       `<encoding-select></encoding-select>` +
       `<input type="text" class="text"></input><br/>` +
@@ -650,7 +662,7 @@ customElements.define("session-view", class extends HTMLElement {
     const codePointChar = this.session.getCharAt(index);
     const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
     charElement.innerHTML = (
-      `<div class="delete">✖</div>` +
+      `<div class="delete xmark"></div>` +
       `<div><input class="codePointHex" type="text" value="${codePointHex}" /></div>` +
       `<div><input class="codePointChar" type="text" value="${codePointChar}" /></div>` +
       `<div class="utf8">${utf8String}</div>` +
