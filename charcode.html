@@ -6,8 +6,10 @@ body {
 }
 
 hr {
-  margin: 2em 0em;
-  border-color: #fafafa;
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 2em 0;
+  padding: 0; 
 }
 
 select {
@@ -26,7 +28,7 @@ input[type="button"] {
 }
 
 .input, .output {
-  margin: 0.3em;
+  margin: 0.3em 0;
 }
 
 .text {
@@ -148,6 +150,12 @@ session-view:hover .delete-session {
 }
 .xmark::after {
   transform: rotate(45deg);
+}
+
+.triple-click-separator {
+  margin: 0.2em;
+  padding: 0;
+  border: 0 transparent;
 }
     </style>
   </head>
@@ -549,6 +557,7 @@ customElements.define("session-view", class extends HTMLElement {
       `<span class="encoded-left"></span>` +
       `<span class="encoded-focused"></span>` +
       `<span class="encoded-right"></span>` +
+      `<hr class="triple-click-separator" />` +
       `</div>` +
       `<div class="chars"></div>` +
       `<hr />`);
