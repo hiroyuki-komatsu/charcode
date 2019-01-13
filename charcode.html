@@ -423,8 +423,17 @@ class SessionManager {
 
     let addButton = document.getElementById("add");
     addButton.addEventListener("click", (event) => {
-      this.addSession("(๑•̀ㅂ•́)و✧", Encoder.getDefaultEncoding());
+      this.addSession(this.getLastSessionValue(), Encoder.getDefaultEncoding());
     });
+  }
+
+  getLastSessionValue() {
+    const sessions = this.sessionArray.getSessions();
+    const length = sessions.length;
+    if (length == 0) {
+      return "";
+    }
+    return sessions[length - 1].getValue();
   }
 
   addSession(value, encoding) {
