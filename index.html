@@ -666,7 +666,6 @@ customElements.define("session-view", class extends HTMLElement {
 
   maybeEscapeChar(char) {
     const escape = {
-      "\"": "&#x22;",
       "\u{200D}": "<ZWJ>",
       "\u{202C}": "<PDF>",
       "\u{202D}": "<LRO>",
@@ -687,17 +686,19 @@ customElements.define("session-view", class extends HTMLElement {
     const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
     charElement.innerHTML = (
       `<div class="delete xmark"></div>` +
-      `<div><input class="codePointHex" type="text" value="${codePointHex}" /></div>` +
-      `<div><input class="codePointChar" type="text" value="${codePointChar}" /></div>` +
+      `<div><input class="codePointHex" type="text"/></div>` +
+      `<div><input class="codePointChar" type="text"/></div>` +
       `<div class="utf8">${utf8String}</div>` +
       `<div class="utf16">${utf16String}</div>` +
       `<div class="link"><a href="${url}">properties</a></div>`);
     let codePointHexElement = charElement.getElementsByClassName("codePointHex")[0];
+    codePointHexElement.value = codePointHex;
     codePointHexElement.addEventListener("change", () => {
       this.session.replace(index, String.fromCodePoint(parseInt(codePointHexElement.value, 16)));
     });
 
     let codePointCharElement = charElement.getElementsByClassName("codePointChar")[0];
+    codePointCharElement.value = codePointChar;
     codePointCharElement.addEventListener("change", () => {
       this.session.replace(index, codePointCharElement.value);
     });
