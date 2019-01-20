@@ -664,6 +664,17 @@ customElements.define("session-view", class extends HTMLElement {
     this.textField.value = Encoder.encode(value, encoding);
   }
 
+  maybeEscapeChar(char) {
+    const escape = {
+      "\"": "&#x22;",
+      "\u{200D}": "<ZWJ>",
+      "\u{202C}": "<PDF>",
+      "\u{202D}": "<LRO>",
+      "\u{202E}": "<RLO>",
+    };
+    return escape[char] || char;
+  }
+
   createCharElement(index) {
     let charElement = document.createElement("div");
     charElement.className = "char";
@@ -672,7 +683,7 @@ customElements.define("session-view", class extends HTMLElement {
     const utf16String = Encoder.encodeUtf16(this.session.getCharAt(index), "", "", " ");
     const codePointHex = getHex(codePoint);
 
-    const codePointChar = this.session.getCharAt(index);
+    const codePointChar = this.maybeEscapeChar(this.session.getCharAt(index));
     const url = `http://unicode.org/cldr/utility/character.jsp?a=${codePointHex}`;
     charElement.innerHTML = (
       `<div class="delete xmark"></div>` +
