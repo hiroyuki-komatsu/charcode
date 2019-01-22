@@ -666,6 +666,7 @@ customElements.define("session-view", class extends HTMLElement {
 
   maybeEscapeChar(char) {
     const escape = {
+      "\u{0009}": "<TAB>",
       "\u{200D}": "<ZWJ>",
       "\u{202C}": "<PDF>",
       "\u{202D}": "<LRO>",
