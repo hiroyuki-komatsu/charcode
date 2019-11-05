@@ -58,12 +58,13 @@ input[type="button"] {
   width: 70px;
   height: 100px;
   vertical-align: top;
-  margin: 0px;
+  margin: 1px;
   margin-top: 10px;
   padding: 3px;
   padding-top: 10px;
   position: relative;
   box-shadow: 1px 1px 1px lightgrey;
+  background-color: white;
 }
 .char input {
   outline: none;
@@ -667,6 +668,7 @@ customElements.define("session-view", class extends HTMLElement {
   maybeEscapeChar(char) {
     const escape = {
       "\u{0009}": "<TAB>",
+      "\u{0020}": "<SP>",
       "\u{200D}": "<ZWJ>",
       "\u{202C}": "<PDF>",
       "\u{202D}": "<LRO>",
@@ -712,7 +714,23 @@ customElements.define("session-view", class extends HTMLElement {
     // Drag and Drop
     this.enableDragAndDrop(charElement, index);
     charElement.addEventListener("dragstart", (event) => {
+      // Hacky way to hide the original element.
+      setTimeout(() => {
+        charElement.style.visibility = "hidden";
+      }, 1);
       deleteElement.style.display = "none";
+    });
+    charElement.addEventListener("dragend", (event) => {
+      setTimeout(() => {
+        charElement.style.visibility = null;
+      }, 1);
+      deleteElement.style.display = null;
+    });
+    charElement.addEventListener("dragover", (event) => {
+      charElement.style.backgroundColor = "lightgrey";
+    });
+    charElement.addEventListener("dragleave", (event) => {
+      charElement.style.backgroundColor = "white";
     });
 
     // Focus
